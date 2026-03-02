@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Gasio 計算機Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        :root { 
+            --bg: #f8fafc; --sidebar: #ffffff; --text-main: #1e293b; --text-muted: #64748b; 
+            --border: #e2e8f0; --accent: #3498db; --accent-hover: #2980b9; 
+            --red: #e74c3c; --green: #2ecc71; --dark: #2c3e50;
+        }
+        body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; display: flex; height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased; }
+        
+        .sidebar { width: 380px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 2rem 1.5rem; overflow-y: auto; z-index: 10; }
+        
+        .main-title { font-size: 2.2rem; font-weight: 800; color: var(--dark); margin-bottom: 0px; letter-spacing: -1px; }
+        .sub-title { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; margin-bottom: 24px; border-bottom: 2px solid var(--accent); padding-bottom: 12px; font-weight: 600; }
+        
+        .control-group { margin-bottom: 1.5rem; }
+        label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-muted); }
+        
+        .checkbox-list { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; max-height: 140px; overflow-y: auto; }
+        .checkbox-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.9rem; font-weight: 500; }
+        .checkbox-item input { margin: 0; cursor: pointer; accent-color: var(--accent); }
+
+        .input-matrix { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .input-matrix th { background: #f1f5f9; padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+        .input-matrix td { padding: 0.3rem 0.4rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; font-weight: 500; vertical-align: middle; }
+        .input-matrix input { width: 100%; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; box-sizing: border-box; text-align: right; background: #fff; font-family: monospace; }
+        .input-matrix input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2); }
+        .input-limit { color: var(--accent); font-weight: bold; }
+        
+        .del-btn { background: none; border: none; color: #cbd5e1; cursor: pointer; font-size: 1.2rem; padding: 0 0.3rem; transition: 0.2s; }
+        .del-btn:hover { color: var(--red); }
+        .add-tier-btn { background: none; border: 1px dashed var(--accent); color: var(--accent); padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: 0.2s; }
+        .add-tier-btn:hover { background: #eff6ff; }
+        
+        .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: auto; transition: 0.2s; }
+        .run-btn:hover { background: var(--accent-hover); }
+
+        .main { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
+        
+        details.master-details { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: 0.3s; }
+        details.master-details summary { padding: 1rem 1.5rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; color: var(--dark); background: #f8fafc; }
+        details.master-details summary::-webkit-details-marker { display: none; }
+        details.master-details summary::after { content: "▼"; font-size: 0.7rem; color: var(--text-muted); transition: transform 0.3s; }
+        details[open].master-details summary::after { transform: rotate(180deg); }
+        
+        .master-content { padding: 1.5rem; border-top: 1px solid var(--border); background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .plan-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .plan-card-header { background: var(--dark); color: #fff; padding: 0.75rem 1rem; font-weight: bold; font-size: 0.9rem; }
+        .plan-card-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .plan-card-table th, .plan-card-table td { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); text-align: left; }
+        .plan-card-table th { color: var(--text-muted); font-weight: 600; background: #f1f5f9; width: 40%; }
+        .plan-card-table td.num { text-align: right; font-family: monospace; font-size: 0.9rem; }
+
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .metric-card { background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); border-left: 5px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .m-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+        .m-value { font-size: 2rem; font-weight: 800; margin: 0.5rem 0; color: var(--dark); font-variant-numeric: tabular-nums; }
+        .delta { font-size: 0.9rem; font-weight: 700; }
+        .delta.plus { color: var(--green); } .delta.minus { color: var(--red); }
+        
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; height: 350px; }
+        .chart-box { background: #fff; border-radius: 8px; border: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .chart-box h3 { margin: 0 0 1rem 0; font-size: 1rem; color: var(--dark); }
+        .canvas-container { flex: 1; position: relative; min-height: 0; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="main-title"><span style="color:#2c3e50">Gas</span><span style="color:#e74c3c">i</span><span style="color:#3498db">o</span> 計算機Pro</div>
+    <div class="sub-title">Rate Simulation System</div>
+
+    <div class="control-group">
+        <label>対象の料金表 (複数選択可)</label>
+        <div class="checkbox-list" id="plan_checkboxes">
+            <div style="color:gray; font-size:0.8rem;">読み込み中...</div>
+        </div>
+    </div>
+    
+    <div class="control-group">
+        <label>新料金マトリックス</label>
+        <table class="input-matrix" id="tier_table">
+            <thead>
+                <tr><th style="width:15%">区画</th><th style="width:35%">上限 (m³)</th><th style="width:40%">単価 (円)</th><th style="width:10%"></th></tr>
+            </thead>
+            <tbody id="tier_body">
+                <tr>
+                    <td style="text-align:center;">基</td>
+                    <td style="text-align:center; color:#ccc;">-</td>
+                    <td><input type="number" id="n_base" value="2000" step="10"></td>
+                    <td></td>
+                </tr>
+                <tr class="tier-row">
+                    <td class="tier-label" style="text-align:center;">1</td>
+                    <td><input type="number" class="input-limit" value="5" step="1"></td>
+                    <td><input type="number" class="input-price" value="650" step="1"></td>
+                    <td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td>
+                </tr>
+                <tr class="tier-row">
+                    <td class="tier-label" style="text-align:center;">2</td>
+                    <td><input type="number" class="input-limit" value="20" step="1"></td>
+                    <td><input type="number" class="input-price" value="600" step="1"></td>
+                    <td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td>
+                </tr>
+                <tr class="final-tier">
+                    <td class="tier-label" style="text-align:center;">3</td>
+                    <td style="text-align:center; color:#ccc; font-size:0.75rem;">それ以上</td>
+                    <td><input type="number" class="input-price" value="550" step="1"></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <button class="add-tier-btn" onclick="addTier()">+ 区画を追加</button>
+    </div>
+    
+    <button class="run-btn" id="run_btn">シミュレーション実行</button>
+    <div id="status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 1rem;">Ready</div>
+</div>
+
+<div class="main">
+    <details class="master-details">
+        <summary>現行料金表マスターを確認</summary>
+        <div id="master_table_container" class="master-content">
+            <p style="color:var(--text-muted); font-size:0.85rem; margin:0; grid-column: 1 / -1;">左のメニューからプランを選択してください。</p>
+        </div>
+    </details>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="m-label">現行 総収益 (推定)</div>
+            <div id="v_cur" class="m-value">¥0</div>
+        </div>
+        <div class="metric-card" style="border-left-color: #e67e22;">
+            <div class="m-label">新料金 総収益</div>
+            <div id="v_new" class="m-value">¥0</div>
+        </div>
+        <div class="metric-card" id="card_diff">
+            <div class="m-label">収益インパクト (差額)</div>
+            <div id="v_diff" class="m-value">¥0</div>
+            <div id="v_delta" class="delta">-</div>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="chart-box">
+            <h3 id="dist_title">現行区画別 調定数比率</h3>
+            <div class="canvas-container"><canvas id="distChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+            <h3>区画別 収益比較</h3>
+            <div class="canvas-container"><canvas id="revChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    Chart.register(ChartDataLabels);
+
+    const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
+    let distChartObj = null, revChartObj = null;
+    const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8'];
+
+    function updateTierLabels() {
+        const labels = document.querySelectorAll('.tier-label');
+        labels.forEach((lbl, idx) => { lbl.innerText = idx + 1; });
+    }
+
+    function addTier() {
+        const tbody = document.getElementById('tier_body');
+        const finalRow = tbody.querySelector('.final-tier');
+        const newRow = document.createElement('tr');
+        newRow.className = 'tier-row';
+        newRow.innerHTML = `
+            <td class="tier-label" style="text-align:center;"></td>
+            <td><input type="number" class="input-limit" value="30" step="1"></td>
+            <td><input type="number" class="input-price" value="500" step="1"></td>
+            <td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td>
+        `;
+        tbody.insertBefore(newRow, finalRow);
+        updateTierLabels();
+    }
+
+    function removeTier(btn) {
+        const row = btn.closest('tr');
+        row.remove();
+        updateTierLabels();
+    }
+
+    async function init() {
+        const { data } = await client.from('price_masters').select('plan_id, plan_name');
+        const container = document.getElementById('plan_checkboxes');
+        container.innerHTML = '';
+        
+        const unique = [...new Map(data.map(p => [p.plan_id, p])).values()];
+        unique.forEach((p, idx) => {
+            const label = document.createElement('label');
+            label.className = 'checkbox-item';
+            const isChecked = idx === 0 ? 'checked' : '';
+            label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" ${isChecked}> ${p.plan_id}: ${p.plan_name}`;
+            label.querySelector('input').addEventListener('change', loadMasterData);
+            container.appendChild(label);
+        });
+        loadMasterData();
+    }
+
+    async function loadMasterData() {
+        const checkboxes = document.querySelectorAll('.plan-check:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        const container = document.getElementById('master_table_container');
+        
+        if (selectedIds.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; margin:0; grid-column: 1 / -1;">プランが選択されていません。</p>';
+            return;
+        }
+
+        const { data } = await client.from('price_masters').select('*').in('plan_id', selectedIds).order('plan_id').order('min_usage');
+        if (!data) return;
+
+        const planGroups = {};
+        data.forEach(row => {
+            if (!planGroups[row.plan_id]) planGroups[row.plan_id] = { name: row.plan_name, tiers: [] };
+            planGroups[row.plan_id].tiers.push(row);
+        });
+
+        let html = '';
+        for (const [pId, pData] of Object.entries(planGroups)) {
+            html += `<div class="plan-card">
+                        <div class="plan-card-header">${pId}: ${pData.name}</div>
+                        <table class="plan-card-table">
+                            <thead><tr><th>適用範囲</th><th class="num">基本料金</th><th class="num">従量単価</th></tr></thead>
+                            <tbody>`;
+            pData.tiers.forEach(row => {
+                const maxU = row.max_usage >= 99999 ? '上限なし' : row.max_usage.toFixed(1) + ' m³';
+                const range = `${row.min_usage.toFixed(1)} ~ ${maxU}`;
+                html += `<tr>
+                            <td>${range}</td>
+                            <td class="num">¥${row.base_fee.toLocaleString()}</td>
+                            <td class="num">¥${row.unit_price.toLocaleString()}</td>
+                         </tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    async function runSim() {
+        const btn = document.getElementById('run_btn');
+        const status = document.getElementById('status');
+        const checkboxes = document.querySelectorAll('.plan-check:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        if (selectedIds.length === 0) { alert("プランを選択してください。"); return; }
+
+        const limitInputs = document.querySelectorAll('.input-limit');
+        const priceInputs = document.querySelectorAll('.input-price');
+        const limits = Array.from(limitInputs).map(inp => parseFloat(inp.value));
+        const prices = Array.from(priceInputs).map(inp => parseFloat(inp.value));
+
+        btn.innerText = "計算中..."; status.innerText = "Processing...";
+
+        const payload = {
+            t_plan_ids: selectedIds,
+            n_base: parseFloat(document.getElementById('n_base').value),
+            n_limits: limits,
+            n_prices: prices
+        };
+
+        const { data, error } = await client.rpc('run_simulation_rpc', payload);
+        if (error) { alert("エラー: " + error.message); btn.innerText = "シミュレーション実行"; return; }
+
+        let curTotal = 0, newTotal = 0;
+        
+        // --- 現行区画用の集計 ---
+        let cTierMap = {};
+        let cTierSort = {};
+        let planTotalDist = {}; // 複数選択時の調定数用
+
+        // --- 新区画用の集計 (収益比較グラフ用) ---
+        let nTierMap = {};
+
+        data.forEach(d => {
+            const cur = parseFloat(d.current_revenue);
+            const prop = parseFloat(d.new_revenue);
+            const cnt = parseInt(d.customer_count);
+            
+            const c_tier = d.c_tier_name;
+            const n_tier = d.n_tier_name;
+            const p = d.plan_id;
+
+            curTotal += cur; newTotal += prop;
+            
+            // ① 現行区画の調定数を集計
+            if (cTierMap[c_tier] === undefined) {
+                cTierMap[c_tier] = 0;
+                cTierSort[c_tier] = parseFloat(d.c_sort_key);
+            }
+            cTierMap[c_tier] += cnt;
+
+            if (!planTotalDist[p]) planTotalDist[p] = 0;
+            planTotalDist[p] += cnt;
+
+            // ② 新区画の収益を集計
+            if (nTierMap[n_tier] === undefined) {
+                nTierMap[n_tier] = { cur: 0, new: 0, sort: parseFloat(d.n_sort_key) };
+            }
+            nTierMap[n_tier].cur += cur;
+            nTierMap[n_tier].new += prop;
+        });
+
+        // 差額と増減率
+        const diff = newTotal - curTotal;
+        const delta = curTotal > 0 ? (diff / curTotal) * 100 : 0;
+
+        document.getElementById('v_cur').innerText = "¥" + Math.round(curTotal).toLocaleString();
+        document.getElementById('v_new').innerText = "¥" + Math.round(newTotal).toLocaleString();
+        document.getElementById('v_diff').innerText = (diff >= 0 ? "+¥" : "¥") + Math.round(diff).toLocaleString();
+        
+        const deltaEl = document.getElementById('v_delta');
+        deltaEl.innerHTML = (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta).toFixed(2) + "%";
+        deltaEl.className = "delta " + (delta >= 0 ? "plus" : "minus");
+        document.getElementById('card_diff').style.borderLeftColor = delta >= 0 ? 'var(--green)' : 'var(--red)';
+
+        // --- グラフ1: 調定数比率 (現行区画ベース) ---
+        const ctx1 = document.getElementById('distChart').getContext('2d');
+        if (distChartObj) distChartObj.destroy();
+        
+        // ソートして配列化
+        const sortedCTiers = Object.keys(cTierMap).sort((a, b) => cTierSort[a] - cTierSort[b]);
+        const distData = sortedCTiers.map(t => cTierMap[t]);
+        const bgColors = sortedCTiers.map((_, i) => PALETTE[i % PALETTE.length]);
+
+        if (selectedIds.length === 1) {
+            document.getElementById('dist_title').innerText = "現行区画別 調定数比率";
+            distChartObj = new Chart(ctx1, {
+                type: 'doughnut',
+                data: { labels: sortedCTiers, datasets: [{ data: distData, backgroundColor: bgColors, borderWidth: 2, borderColor: '#fff' }] },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, cutout: '65%', 
+                    plugins: { 
+                        legend: { position: 'right' },
+                        datalabels: {
+                            formatter: (value, ctx) => {
+                                let sum = 0;
+                                ctx.chart.data.datasets[0].data.map(d => { sum += d; });
+                                return (value * 100 / sum).toFixed(1) + "%";
+                            },
+                            color: '#fff', font: { weight: 'bold', size: 12 },
+                            backgroundColor: 'rgba(0, 0, 0, 0.4)', borderRadius: 4, padding: 4
+                        }
+                    } 
+                }
+            });
+        } else {
+            // 複数プランの場合は「調定数」として表示
+            document.getElementById('dist_title').innerText = "プラン別 調定数";
+            const pLabels = Object.keys(planTotalDist).map(p => `Plan ${p}`);
+            const dataTotal = Object.values(planTotalDist);
+            distChartObj = new Chart(ctx1, {
+                type: 'bar',
+                data: { labels: pLabels, datasets: [{ label: '調定数', data: dataTotal, backgroundColor: '#3498db', borderRadius: 4 }] },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    scales: { 
+                        x: { grid: { display: false } }, 
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '調定数 (件)', font: {size: 11} } } 
+                    },
+                    plugins: { legend: { display: false }, datalabels: { display: false } }
+                }
+            });
+        }
+
+        // --- グラフ2: 収益比較 (新料金区画ベース) ---
+        const ctx2 = document.getElementById('revChart').getContext('2d');
+        if (revChartObj) revChartObj.destroy();
+        
+        // 新区画のソート
+        const sortedNTiers = Object.keys(nTierMap).sort((a, b) => nTierMap[a].sort - nTierMap[b].sort);
+        const curRevs = sortedNTiers.map(t => nTierMap[t].cur);
+        const newRevs = sortedNTiers.map(t => nTierMap[t].new);
+
+        revChartObj = new Chart(ctx2, {
+            type: 'bar',
+            data: { 
+                labels: sortedNTiers, 
+                datasets: [
+                    { label: '現行', data: curRevs, backgroundColor: '#95a5a6', borderRadius: 4 }, 
+                    { label: '新料金', data: newRevs, backgroundColor: '#e67e22', borderRadius: 4 }
+                ] 
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { position: 'top' }, datalabels: { display: false } },
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '収益 (円)', font: {size: 11} } }, 
+                    x: { grid: { display: false } } 
+                }
+            }
+        });
+
+        btn.innerText = "シミュレーション実行"; status.innerText = "✓ 完了";
+    }
+
+    document.getElementById('run_btn').addEventListener('click', runSim);
+    init();
+</script>
+</body>
+</html>
