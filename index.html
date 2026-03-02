@@ -38,8 +38,13 @@
         .add-tier-btn { background: none; border: 1px dashed var(--accent); color: var(--accent); padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: 0.2s; }
         .add-tier-btn:hover { background: #eff6ff; }
         
-        .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: auto; transition: 0.2s; }
+        .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; transition: 0.2s; }
         .run-btn:hover { background: var(--accent-hover); }
+
+        /* 追加：サイドバー下部のボタングループ */
+        .sidebar-bottom { margin-top: auto; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
+        .nav-link-btn { text-align: center; text-decoration: none; background: #f8fafc; color: var(--dark); border: 1px solid var(--border); padding: 0.8rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem; transition: 0.2s; cursor: pointer; }
+        .nav-link-btn:hover { background: #e2e8f0; }
 
         .main { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
         
@@ -121,6 +126,11 @@
     
     <button class="run-btn" id="run_btn">シミュレーション実行</button>
     <div id="status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 1rem;">Ready</div>
+
+    <div class="sidebar-bottom">
+        <a href="data_manager.html" class="nav-link-btn">⚙️ データ管理・設定</a>
+        <button onclick="logOut()" class="nav-link-btn" style="color: var(--red); border-color: #f5b7b1;">🚪 ログアウト</button>
+    </div>
 </div>
 
 <div class="main">
@@ -166,6 +176,17 @@
     let distChartObj = null, revChartObj = null;
     const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8'];
 
+    // 認証チェック
+    client.auth.getSession().then(({ data: { session } }) => {
+        if (!session) window.location.href = 'login.html';
+    });
+
+    // ログアウト処理
+    async function logOut() {
+        await client.auth.signOut();
+        window.location.href = 'login.html';
+    }
+
     function updateTierLabels() {
         const labels = document.querySelectorAll('.tier-label');
         labels.forEach((lbl, idx) => { lbl.innerText = idx + 1; });
@@ -197,6 +218,11 @@
         const container = document.getElementById('plan_checkboxes');
         container.innerHTML = '';
         
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div style="color:var(--red); font-size:0.8rem;">データがありません。<br>右下の「データ管理」からアップロードしてください。</div>';
+            return;
+        }
+
         const unique = [...new Map(data.map(p => [p.plan_id, p])).values()];
         unique.forEach((p, idx) => {
             const label = document.createElement('label');
@@ -276,13 +302,7 @@
 
         let curTotal = 0, newTotal = 0;
         
-        // --- 現行区画用の集計 ---
-        let cTierMap = {};
-        let cTierSort = {};
-        let planTotalDist = {}; // 複数選択時の調定数用
-
-        // --- 新区画用の集計 (収益比較グラフ用) ---
-        let nTierMap = {};
+        let cTierMap = {}; let cTierSort = {}; let planTotalDist = {}; let nTierMap = {};
 
         data.forEach(d => {
             const cur = parseFloat(d.current_revenue);
@@ -295,7 +315,6 @@
 
             curTotal += cur; newTotal += prop;
             
-            // ① 現行区画の調定数を集計
             if (cTierMap[c_tier] === undefined) {
                 cTierMap[c_tier] = 0;
                 cTierSort[c_tier] = parseFloat(d.c_sort_key);
@@ -305,7 +324,6 @@
             if (!planTotalDist[p]) planTotalDist[p] = 0;
             planTotalDist[p] += cnt;
 
-            // ② 新区画の収益を集計
             if (nTierMap[n_tier] === undefined) {
                 nTierMap[n_tier] = { cur: 0, new: 0, sort: parseFloat(d.n_sort_key) };
             }
@@ -313,7 +331,6 @@
             nTierMap[n_tier].new += prop;
         });
 
-        // 差額と増減率
         const diff = newTotal - curTotal;
         const delta = curTotal > 0 ? (diff / curTotal) * 100 : 0;
 
@@ -326,11 +343,9 @@
         deltaEl.className = "delta " + (delta >= 0 ? "plus" : "minus");
         document.getElementById('card_diff').style.borderLeftColor = delta >= 0 ? 'var(--green)' : 'var(--red)';
 
-        // --- グラフ1: 調定数比率 (現行区画ベース) ---
         const ctx1 = document.getElementById('distChart').getContext('2d');
         if (distChartObj) distChartObj.destroy();
         
-        // ソートして配列化
         const sortedCTiers = Object.keys(cTierMap).sort((a, b) => cTierSort[a] - cTierSort[b]);
         const distData = sortedCTiers.map(t => cTierMap[t]);
         const bgColors = sortedCTiers.map((_, i) => PALETTE[i % PALETTE.length]);
@@ -357,7 +372,6 @@
                 }
             });
         } else {
-            // 複数プランの場合は「調定数」として表示
             document.getElementById('dist_title').innerText = "プラン別 調定数";
             const pLabels = Object.keys(planTotalDist).map(p => `Plan ${p}`);
             const dataTotal = Object.values(planTotalDist);
@@ -375,11 +389,9 @@
             });
         }
 
-        // --- グラフ2: 収益比較 (新料金区画ベース) ---
         const ctx2 = document.getElementById('revChart').getContext('2d');
         if (revChartObj) revChartObj.destroy();
         
-        // 新区画のソート
         const sortedNTiers = Object.keys(nTierMap).sort((a, b) => nTierMap[a].sort - nTierMap[b].sort);
         const curRevs = sortedNTiers.map(t => nTierMap[t].cur);
         const newRevs = sortedNTiers.map(t => nTierMap[t].new);
