@@ -140,7 +140,16 @@
     </div>
     
     <button class="run-btn" id="run_btn">シミュレーション実行</button>
-    <div id="status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 1rem;">Ready</div>
+    <div id="status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; margin-bottom: 1.5rem;">Ready</div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem;">
+        <button class="nav-link-btn" onclick="exportComprehensiveCSV()" style="width: 100%; color: var(--accent); border-color: var(--accent); background: #f0f9ff;">
+            📊 総合レポート出力 (CSV)
+        </button>
+        <button class="nav-link-btn" onclick="exportAllCSV()" style="width: 100%; color: #334155; border-color: var(--border); background: #f8fafc;">
+            📥 全ての料金番号を出力 (CSV)
+        </button>
+    </div>
 
     <div class="sidebar-bottom">
         <a href="data_manager.html" class="nav-link-btn">⚙️ データ管理・設定</a>
@@ -222,9 +231,6 @@
                 <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
                     <button class="nav-link-btn" onclick="exportAnomalyCSV()" style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--red); border-color: var(--red);">
                         📥 アラート対象のみ出力 (CSV)
-                    </button>
-                    <button class="nav-link-btn" onclick="exportComprehensiveCSV()" style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--accent); border-color: var(--accent); background: #f0f9ff;">
-                        📊 シミュレーション総合結果レポート (CSV)
                     </button>
                 </div>
                 
@@ -498,6 +504,7 @@
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
+    // ① アラート対象の料金番号のみ出力
     function exportAnomalyCSV() {
         if (!window.currentAnomalies || window.currentAnomalies.length === 0) {
             alert("出力するアラートデータがありません。");
@@ -507,12 +514,27 @@
         window.currentAnomalies.forEach(a => {
             let rate = (a.rate * 100).toFixed(1);
             let usage = a.usageTotal.toFixed(1);
-            csvContent += `="${a.meterId}",${a.tariffId},${usage},${rate},${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
+            csvContent += `="${a.meterId}",${a.tariffId},${usage},${rate}%,${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
         });
         triggerDownload(csvContent, "anomaly_alert_data.csv");
     }
 
-    // 🌟 新機能：画面の全ての情報を網羅した「総合レポート」のCSV出力
+    // ② 全ての料金番号を出力（左ペインに移動）
+    function exportAllCSV() {
+        if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
+            alert("出力するデータがありません。シミュレーションを実行してください。");
+            return;
+        }
+        let csvContent = "料金番号,対象プラン,年間総使用量(m3),値上げ上昇率(%),現行料金(円),新料金(円),年間負担増額(円)\n";
+        window.currentAllImpacts.forEach(a => {
+            let rate = (a.rate * 100).toFixed(1);
+            let usage = a.usageTotal.toFixed(1);
+            csvContent += `="${a.meterId}",${a.tariffId},${usage},${rate}%,${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
+        });
+        triggerDownload(csvContent, "all_meters_simulation_data.csv");
+    }
+
+    // ③ 画面の全ての情報を網羅した「総合レポート」のCSV出力（左ペイン用）
     function exportComprehensiveCSV() {
         if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
             alert("シミュレーションを実行してから出力してください。");
@@ -642,7 +664,7 @@
             if (!meterImpacts[meterId]) meterImpacts[meterId] = { cur: 0, new: 0, usageTotal: 0, tariffId: tariffId };
             meterImpacts[meterId].cur += curBill;
             meterImpacts[meterId].new += newBill;
-            meterImpacts[meterId].usageTotal += usage; // 総合出力用に年間使用量を保持
+            meterImpacts[meterId].usageTotal += usage; 
         });
 
         let allImpacts = [];
