@@ -41,7 +41,6 @@
         .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; transition: 0.2s; }
         .run-btn:hover { background: var(--accent-hover); }
 
-        /* 追加：サイドバー下部のボタングループ */
         .sidebar-bottom { margin-top: auto; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
         .nav-link-btn { text-align: center; text-decoration: none; background: #f8fafc; color: var(--dark); border: 1px solid var(--border); padding: 0.8rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem; transition: 0.2s; cursor: pointer; }
         .nav-link-btn:hover { background: #e2e8f0; }
@@ -69,10 +68,24 @@
         .delta { font-size: 0.9rem; font-weight: 700; }
         .delta.plus { color: var(--green); } .delta.minus { color: var(--red); }
         
+        /* グラフエリアの調整 */
         .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; height: 350px; }
+        /* トレンドグラフは1行まるごと使う */
+        .trend-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; height: 350px; margin-top: 1.5rem; }
+        
         .chart-box { background: #fff; border-radius: 8px; border: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .chart-box h3 { margin: 0 0 1rem 0; font-size: 1rem; color: var(--dark); }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .chart-box h3 { margin: 0; font-size: 1rem; color: var(--dark); }
         .canvas-container { flex: 1; position: relative; min-height: 0; }
+        
+        /* トグルスイッチのスタイル */
+        .toggle-container { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
 <body>
@@ -159,12 +172,34 @@
 
     <div class="charts-grid">
         <div class="chart-box">
-            <h3 id="dist_title">現行区画別 調定数比率</h3>
+            <div class="chart-header">
+                <h3 id="dist_title">現行区画別 調定数比率</h3>
+            </div>
             <div class="canvas-container"><canvas id="distChart"></canvas></div>
         </div>
         <div class="chart-box">
-            <h3>区画別 収益比較</h3>
+            <div class="chart-header">
+                <h3>区画別 収益比較</h3>
+            </div>
             <div class="canvas-container"><canvas id="revChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="trend-grid">
+        <div class="chart-box">
+            <div class="chart-header">
+                <h3>過去1年間の使用量推移 (料金表別)</h3>
+                <div class="toggle-container">
+                    折れ線
+                    <label class="switch">
+                        <input type="checkbox" id="trend_toggle" onchange="toggleTrendChart()">
+                        <span class="slider"></span>
+                    </label>
+                    積み上げ棒
+                </div>
+            </div>
+            <div class="canvas-container"><canvas id="trendChart"></canvas></div>
+            <div id="trend_status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; display: none;">データを読み込んでいます...</div>
         </div>
     </div>
 </div>
@@ -173,12 +208,16 @@
     Chart.register(ChartDataLabels);
 
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
-    let distChartObj = null, revChartObj = null;
-    const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8'];
+    let distChartObj = null, revChartObj = null, trendChartObj = null;
+    let currentUser = null;
+    let trendChartData = null; // トレンドグラフのデータを保持
+    const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
 
     // 認証チェック
     client.auth.getSession().then(({ data: { session } }) => {
         if (!session) window.location.href = 'login.html';
+        currentUser = session.user;
+        init();
     });
 
     // ログアウト処理
@@ -229,10 +268,14 @@
             label.className = 'checkbox-item';
             const isChecked = idx === 0 ? 'checked' : '';
             label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" ${isChecked}> ${p.plan_id}: ${p.plan_name}`;
-            label.querySelector('input').addEventListener('change', loadMasterData);
+            label.querySelector('input').addEventListener('change', () => {
+                loadMasterData();
+                loadTrendData(); // プランが変更されたらトレンドグラフも更新
+            });
             container.appendChild(label);
         });
         loadMasterData();
+        loadTrendData(); // 初回読み込み
     }
 
     async function loadMasterData() {
@@ -274,6 +317,145 @@
         }
         container.innerHTML = html;
     }
+
+    // --- 新規追加：トレンドデータの取得と描画 ---
+    async function loadTrendData() {
+        const checkboxes = document.querySelectorAll('.plan-check:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => cb.value); // tariff_id は文字列の可能性もあるため
+        const statusEl = document.getElementById('trend_status');
+        
+        if (selectedIds.length === 0) {
+            if (trendChartObj) trendChartObj.destroy();
+            return;
+        }
+
+        statusEl.style.display = 'block';
+
+        // gas_data_v3 から対象プランのデータを取得
+        // ※実際の実務では件数が多い場合、RPCで集計したものを取得するのがベストですが、
+        // 今回はフロントエンドで集計します。
+        const { data, error } = await client.from('gas_data_v3')
+            .select('year_month, tariff_id, usage_amount')
+            .in('tariff_id', selectedIds) // 料金表番号(tariff_id)で絞り込み
+            .eq('user_id', currentUser.id)
+            .order('year_month', { ascending: true });
+
+        if (error || !data || data.length === 0) {
+            statusEl.innerText = "データがありません。v3インポーターからデータを登録してください。";
+            if (trendChartObj) trendChartObj.destroy();
+            return;
+        }
+
+        statusEl.style.display = 'none';
+
+        // 年月とプランごとの使用量を集計
+        // 構造: { '202304': { '1': 1500, '2': 800 }, '202305': ... }
+        const aggregated = {};
+        const monthsSet = new Set();
+        
+        data.forEach(row => {
+            const ym = row.year_month;
+            const tId = row.tariff_id;
+            const amt = parseFloat(row.usage_amount) || 0;
+            
+            monthsSet.add(ym);
+            if (!aggregated[ym]) aggregated[ym] = {};
+            if (!aggregated[ym][tId]) aggregated[ym][tId] = 0;
+            
+            aggregated[ym][tId] += amt;
+        });
+
+        // X軸のラベル（年月を古い順にソート）
+        const labels = Array.from(monthsSet).sort();
+        // 表示用に 'YYYY/MM' にフォーマット
+        const displayLabels = labels.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6));
+
+        // Chart.js 用の datasets を作成
+        const datasets = [];
+        selectedIds.forEach((tId, idx) => {
+            const dataPoints = labels.map(ym => aggregated[ym][tId] || 0);
+            const color = PALETTE[idx % PALETTE.length];
+            
+            datasets.push({
+                label: `プラン ${tId}`,
+                data: dataPoints,
+                borderColor: color,
+                backgroundColor: color + '80', // 半透明
+                borderWidth: 2,
+                tension: 0.1, // 折れ線を少し滑らかに
+                fill: false // 折れ線用
+            });
+        });
+
+        trendChartData = { labels: displayLabels, datasets: datasets };
+        renderTrendChart();
+    }
+
+    function renderTrendChart() {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        const isBar = document.getElementById('trend_toggle').checked;
+
+        if (trendChartObj) trendChartObj.destroy();
+
+        // トグルスイッチの状態に合わせて datasets を調整
+        const configuredDatasets = trendChartData.datasets.map(ds => {
+            return {
+                ...ds,
+                type: isBar ? 'bar' : 'line',
+                fill: !isBar ? false : true, // 棒グラフの時は関係ないが念のため
+            };
+        });
+
+        trendChartObj = new Chart(ctx, {
+            type: isBar ? 'bar' : 'line', // ベースのタイプ
+            data: {
+                labels: trendChartData.labels,
+                datasets: configuredDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    datalabels: { display: false }, // 数値がごちゃつくので非表示
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) label += context.parsed.y.toLocaleString() + ' m³';
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: isBar, // 棒グラフなら積み上げ
+                        grid: { display: false }
+                    },
+                    y: {
+                        stacked: isBar, // 棒グラフなら積み上げ
+                        beginAtZero: true,
+                        grid: { color: '#f1f5f9' },
+                        title: { display: true, text: '総使用量 (m³)', font: {size: 11} }
+                    }
+                }
+            }
+        });
+    }
+
+    // トグルスイッチが押された時の処理
+    function toggleTrendChart() {
+        if (trendChartData) {
+            renderTrendChart();
+        }
+    }
+    // --- 追加ここまで ---
 
     async function runSim() {
         const btn = document.getElementById('run_btn');
@@ -419,7 +601,6 @@
     }
 
     document.getElementById('run_btn').addEventListener('click', runSim);
-    init();
 </script>
 </body>
 </html>
