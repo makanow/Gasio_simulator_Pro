@@ -210,17 +210,15 @@
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
     let distChartObj = null, revChartObj = null, trendChartObj = null;
     let currentUser = null;
-    let trendChartData = null; // トレンドグラフのデータを保持
+    let trendChartData = null; 
     const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
 
-    // 認証チェック
     client.auth.getSession().then(({ data: { session } }) => {
         if (!session) window.location.href = 'login.html';
         currentUser = session.user;
         init();
     });
 
-    // ログアウト処理
     async function logOut() {
         await client.auth.signOut();
         window.location.href = 'login.html';
@@ -270,12 +268,12 @@
             label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" ${isChecked}> ${p.plan_id}: ${p.plan_name}`;
             label.querySelector('input').addEventListener('change', () => {
                 loadMasterData();
-                loadTrendData(); // プランが変更されたらトレンドグラフも更新
+                loadTrendData();
             });
             container.appendChild(label);
         });
         loadMasterData();
-        loadTrendData(); // 初回読み込み
+        loadTrendData(); 
     }
 
     async function loadMasterData() {
@@ -318,10 +316,10 @@
         container.innerHTML = html;
     }
 
-    // --- 新規追加：トレンドデータの取得と描画 ---
+    // --- トレンドデータの取得と描画 (全件取得ループ版) ---
     async function loadTrendData() {
         const checkboxes = document.querySelectorAll('.plan-check:checked');
-        const selectedIds = Array.from(checkboxes).map(cb => cb.value); // tariff_id は文字列の可能性もあるため
+        const selectedIds = Array.from(checkboxes).map(cb => cb.value); 
         const statusEl = document.getElementById('trend_status');
         
         if (selectedIds.length === 0) {
@@ -331,25 +329,47 @@
 
         statusEl.style.display = 'block';
 
-        // gas_data_v3 から対象プランのデータを取得
-        // ※実際の実務では件数が多い場合、RPCで集計したものを取得するのがベストですが、
-        // 今回はフロントエンドで集計します。
-        const { data, error } = await client.from('gas_data_v3')
-            .select('year_month, tariff_id, usage_amount')
-            .in('tariff_id', selectedIds) // 料金表番号(tariff_id)で絞り込み
-            .eq('user_id', currentUser.id)
-            .order('year_month', { ascending: true });
+        let allData = [];
+        let step = 1000;
+        let start = 0;
+        let fetchMore = true;
 
-        if (error || !data || data.length === 0) {
+        while(fetchMore) {
+            const { data, error } = await client.from('gas_data_v3')
+                .select('year_month, tariff_id, usage_amount')
+                .in('tariff_id', selectedIds)
+                .eq('user_id', currentUser.id)
+                .order('year_month', { ascending: true })
+                .range(start, start + step - 1);
+
+            if (error) {
+                statusEl.innerText = "データ取得エラーが発生しました";
+                if (trendChartObj) trendChartObj.destroy();
+                return;
+            }
+
+            if (data && data.length > 0) {
+                allData = allData.concat(data);
+                start += data.length;
+                statusEl.innerText = `データ読込中... (${allData.length.toLocaleString()}件)`;
+            }
+
+            if (!data || data.length < step) {
+                fetchMore = false; 
+            }
+        }
+
+        const data = allData;
+
+        if (!data || data.length === 0) {
             statusEl.innerText = "データがありません。v3インポーターからデータを登録してください。";
+            statusEl.style.display = 'block';
             if (trendChartObj) trendChartObj.destroy();
             return;
         }
 
         statusEl.style.display = 'none';
 
-        // 年月とプランごとの使用量を集計
-        // 構造: { '202304': { '1': 1500, '2': 800 }, '202305': ... }
         const aggregated = {};
         const monthsSet = new Set();
         
@@ -365,12 +385,9 @@
             aggregated[ym][tId] += amt;
         });
 
-        // X軸のラベル（年月を古い順にソート）
         const labels = Array.from(monthsSet).sort();
-        // 表示用に 'YYYY/MM' にフォーマット
         const displayLabels = labels.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6));
 
-        // Chart.js 用の datasets を作成
         const datasets = [];
         selectedIds.forEach((tId, idx) => {
             const dataPoints = labels.map(ym => aggregated[ym][tId] || 0);
@@ -380,10 +397,10 @@
                 label: `プラン ${tId}`,
                 data: dataPoints,
                 borderColor: color,
-                backgroundColor: color + '80', // 半透明
+                backgroundColor: color + '80', 
                 borderWidth: 2,
-                tension: 0.1, // 折れ線を少し滑らかに
-                fill: false // 折れ線用
+                tension: 0.1, 
+                fill: false 
             });
         });
 
@@ -397,17 +414,16 @@
 
         if (trendChartObj) trendChartObj.destroy();
 
-        // トグルスイッチの状態に合わせて datasets を調整
         const configuredDatasets = trendChartData.datasets.map(ds => {
             return {
                 ...ds,
                 type: isBar ? 'bar' : 'line',
-                fill: !isBar ? false : true, // 棒グラフの時は関係ないが念のため
+                fill: !isBar ? false : true, 
             };
         });
 
         trendChartObj = new Chart(ctx, {
-            type: isBar ? 'bar' : 'line', // ベースのタイプ
+            type: isBar ? 'bar' : 'line', 
             data: {
                 labels: trendChartData.labels,
                 datasets: configuredDatasets
@@ -421,7 +437,7 @@
                 },
                 plugins: {
                     legend: { position: 'top' },
-                    datalabels: { display: false }, // 数値がごちゃつくので非表示
+                    datalabels: { display: false }, 
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -435,11 +451,11 @@
                 },
                 scales: {
                     x: {
-                        stacked: isBar, // 棒グラフなら積み上げ
+                        stacked: isBar, 
                         grid: { display: false }
                     },
                     y: {
-                        stacked: isBar, // 棒グラフなら積み上げ
+                        stacked: isBar, 
                         beginAtZero: true,
                         grid: { color: '#f1f5f9' },
                         title: { display: true, text: '総使用量 (m³)', font: {size: 11} }
@@ -449,13 +465,11 @@
         });
     }
 
-    // トグルスイッチが押された時の処理
     function toggleTrendChart() {
         if (trendChartData) {
             renderTrendChart();
         }
     }
-    // --- 追加ここまで ---
 
     async function runSim() {
         const btn = document.getElementById('run_btn');
