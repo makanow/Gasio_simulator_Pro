@@ -6,6 +6,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
+    
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 2rem; }
         .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -47,23 +48,22 @@
                 <h4 style="margin: 0 0 0.5rem 0; color: #065f46;">✨ システムが自動で補正する項目</h4>
                 <ul class="auto-fix-list">
                     <li>文字化け防止: Windows特有の文字コード(Shift-JIS)を自動で正常化します。</li>
-                    <li>数字の表記揺れ: 「¥1,500」や「1,500.0」、全角「１５００」などを自動で純粋な数値に変換します。</li>
-                    <li>日付の表記揺れ: 「2026年3月3日」や「2026/03/03」を正しい日付形式に自動変換します。</li>
+                    <li>数字の表記揺れ: 「¥1,500」や「1,500.0」、全角「１５００」などを自動で変換します。</li>
+                    <li>日付の表記揺れ: 「2026年3月3日」や「2026/03/03」を自動変換します。</li>
                 </ul>
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #047857;">※列の順番（A列、B列...）さえ合っていれば、多少の表記揺れはエラーになりません。</p>
             </div>
 
             <h3>1. 料金表マスターの列構成</h3>
             <table class="guide-table">
                 <tr><th>A列</th><th>B列</th><th>C列</th><th>D列</th><th>E列</th><th>F列</th></tr>
-                <tr><td>プランID<br>(例: 101)</td><td>区画名<br>(例: A区画)</td><td>最小使用量<br>(例: 0)</td><td>最大使用量<br>(例: 8.0 ※上限なしは99999)</td><td>基本料金<br>(例: 1500)</td><td>従量単価<br>(例: 650.5)</td></tr>
+                <tr><td>プランID<br>(例: 1)</td><td>区画名<br>(例: A区画)</td><td>最小使用量<br>(例: 0)</td><td>最大使用量<br>(例: 8.0 ※上限なしは99999)</td><td>基本料金<br>(例: 1500)</td><td>従量単価<br>(例: 650.5)</td></tr>
             </table>
             <button class="btn-outline" onclick="downloadSample('master')">📥 マスター用のサンプルCSVをダウンロード</button>
 
             <h3 style="margin-top: 2rem;">2. 請求実績データ (調定数) の列構成</h3>
             <table class="guide-table">
                 <tr><th>A列</th><th>B列</th><th>C列</th><th>D列</th><th>E列</th></tr>
-                <tr><td>対象年月<br>(例: 2026/03)</td><td>顧客ID<br>(例: CUST-001)</td><td>プランID<br>(例: 101 ※マスターと一致)</td><td>使用量(m³)<br>(例: 15.5)</td><td>請求額<br>(例: 8500)</td></tr>
+                <tr><td>対象年月<br>(例: 2026/03)</td><td>顧客ID<br>(例: CUST-001)</td><td>プランID<br>(例: 1 ※マスターと一致)</td><td>使用量(m³)<br>(例: 15.5)</td><td>請求額<br>(例: 8500)</td></tr>
             </table>
             <button class="btn-outline" onclick="downloadSample('billing')">📥 請求データ用のサンプルCSVをダウンロード</button>
         </div>
@@ -85,15 +85,22 @@
 </div>
 
 <script>
-    // Supabase 接続設定
+    // -------------------------------------------------------------
+    // 1. データベース接続 ＆ 認証チェック
+    // -------------------------------------------------------------
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
+    let currentUser = null;
 
     client.auth.getSession().then(({ data: { session } }) => {
-        if (!session) window.location.href = 'login.html';
+        if (!session) {
+            window.location.href = 'login.html';
+        } else {
+            currentUser = session.user;
+        }
     });
 
     // -------------------------------------------------------------
-    // サンプルCSV ダウンロード機能
+    // 2. サンプルCSV ダウンロード機能
     // -------------------------------------------------------------
     function downloadSample(type) {
         let csvContent = "\ufeff"; // BOM付与でExcelでの文字化け防止
@@ -123,12 +130,14 @@
     }
 
     // -------------------------------------------------------------
-    // クレンジング関数群（前回検証済みの堅牢版）
+    // 3. データクレンジング関数群
     // -------------------------------------------------------------
     function cleanNumber(val) {
         if (val === null || val === undefined || val === '') return 0;
         let s = String(val);
+        // 全角数字を半角に
         s = s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+        // 数字・ピリオド・マイナス以外を排除（￥やカンマを消す）
         s = s.replace(/[^0-9.-]/g, '');
         const num = parseFloat(s);
         return isNaN(num) ? 0 : num;
@@ -138,11 +147,13 @@
         if (!val) return null;
         let s = String(val).trim();
         
+        // Excelシリアル値対応
         if (!isNaN(s) && Number(s) > 30000) {
             const d = new Date((Number(s) - 25569) * 86400 * 1000);
             return d.toISOString().split('T')[0];
         }
 
+        // 年月日表記をハイフンに変換
         s = s.replace(/[年月]/g, '-').replace(/日/g, '').replace(/\//g, '-');
         
         const parts = s.split('-');
@@ -151,6 +162,7 @@
             let m = parts[1].padStart(2, '0');
             let d = parts.length >= 3 ? parts[2].padStart(2, '0') : '01';
             const formatted = `${y}-${m}-${d}`;
+            // YYYY-MM-DDの完全一致チェック
             if (/^\d{4}-\d{2}-\d{2}$/.test(formatted)) {
                 return formatted;
             }
@@ -158,6 +170,7 @@
         return null;
     }
 
+    // CSVファイルの読み込みとShift-JIS自動判定
     function parseCSVFile(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -169,7 +182,7 @@
                 });
 
                 Papa.parse(unicodeString, {
-                    header: false,
+                    header: false, // 列順で強制マッピング
                     skipEmptyLines: true,
                     complete: function(results) {
                         resolve(results.data);
@@ -184,9 +197,10 @@
     }
 
     // -------------------------------------------------------------
-    // アップロード処理群
+    // 4. アップロード実行処理
     // -------------------------------------------------------------
     async function uploadMaster() {
+        if (!currentUser) return alert("ユーザー認証エラー。ページをリロードしてください。");
         const fileInput = document.getElementById('file_master');
         const statusEl = document.getElementById('status_master');
         if (!fileInput.files.length) return statusEl.innerText = "ファイルを選択してください。";
@@ -195,11 +209,13 @@
         try {
             const rawData = await parseCSVFile(fileInput.files[0]);
             
+            // ヘッダー行判定：A列が数字に変換できなければ文字(ヘッダー)としてスキップ
             if (rawData.length > 0 && isNaN(Number(rawData[0][0]))) {
                 rawData.shift();
             }
 
             const payload = rawData.filter(row => row.length >= 6).map(row => ({
+                user_id: currentUser.id, // 【重要】ログインユーザーの紐付け
                 plan_id: cleanNumber(row[0]),
                 plan_name: String(row[1]).trim() || '名称未設定',
                 min_usage: cleanNumber(row[2]),
@@ -211,7 +227,8 @@
             if (payload.length === 0) throw new Error("有効なデータが見つかりません。");
 
             statusEl.innerText = "データベースへ登録中...";
-            await client.from('price_masters').delete().neq('plan_id', -1);
+            // 【重要】自分のデータだけを初期化
+            await client.from('price_masters').delete().eq('user_id', currentUser.id);
             
             const { error } = await client.from('price_masters').insert(payload);
             if (error) throw error;
@@ -226,6 +243,7 @@
     }
 
     async function uploadBilling() {
+        if (!currentUser) return alert("ユーザー認証エラー。ページをリロードしてください。");
         const fileInput = document.getElementById('file_billing');
         const statusEl = document.getElementById('status_billing');
         if (!fileInput.files.length) return statusEl.innerText = "ファイルを選択してください。";
@@ -234,26 +252,30 @@
         try {
             const rawData = await parseCSVFile(fileInput.files[0]);
             
+            // ヘッダー行判定：C列(プランID)が数字に変換できなければ文字としてスキップ
             if (rawData.length > 0 && isNaN(Number(rawData[0][2]))) {
                 rawData.shift();
             }
 
             const payload = rawData.filter(row => row.length >= 5).map(row => ({
+                user_id: currentUser.id, // 【重要】ログインユーザーの紐付け
                 target_month: cleanDate(row[0]),
                 customer_id: String(row[1]).trim(),
                 plan_id: cleanNumber(row[2]),
                 usage_m3: cleanNumber(row[3]),
                 billed_amount: cleanNumber(row[4])
-            })).filter(item => item.target_month !== null);
+            })).filter(item => item.target_month !== null); // 日付クレンジング失敗行を除外
 
             if (payload.length === 0) throw new Error("有効なデータが見つかりません。");
 
             statusEl.innerText = `クレンジング完了。${payload.length}件をデータベースへ送信中...`;
             
+            // 【重要】自分のデータだけを初期化
+            await client.from('billing_data').delete().eq('user_id', currentUser.id);
+
+            // タイムアウト対策のチャンク送信
             const CHUNK_SIZE = 500;
             let successCount = 0;
-            
-            await client.from('billing_data').delete().neq('plan_id', -1);
 
             for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
                 const chunk = payload.slice(i, i + CHUNK_SIZE);
