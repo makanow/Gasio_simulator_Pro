@@ -52,8 +52,8 @@
 </div>
 
 <script>
-    const SUPABASE_URL = "YOUR_SUPABASE_URL"; // ご自身のURLに書き換えてください
-    const SUPABASE_KEY = "YOUR_SUPABASE_KEY"; // ご自身のKEYに書き換えてください
+    const SUPABASE_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"; // ご自身のURLに書き換えてください
+    const SUPABASE_KEY = "https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"; // ご自身のKEYに書き換えてください
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let currentUser = null;
 
@@ -168,6 +168,114 @@
             log("🗑️ データを全削除しました。");
             document.getElementById('billingStatus').innerText = '削除完了';
         }
+    }
+
+    checkAuth();
+</script>
+</body>
+</html>]; let step = 1000; let start = 0; let fetchMore = true;
+        
+        while(fetchMore) {
+            const { data, error } = await client.from('billing_data').select('plan_id, usage_m3').eq('user_id', currentUser.id).range(start, start + step - 1);
+            if (error) { statusEl.innerText = 'エラー'; return; }
+            if (data && data.length > 0) { allData = allData.concat(data); start += data.length; statusEl.innerText = `取得中... (${allData.length.toLocaleString()}件)`; }
+            if (!data || data.length < step) fetchMore = false;
+        }
+        if (allData.length > 0) { triggerDownload(Papa.unparse(allData), "gasio_billing_data.csv"); statusEl.innerText = `✓ バックアップ完了`; statusEl.className = 'status success'; }
+    }
+
+    // 修正: Shift-JIS対応と数値クレンジングを追加
+    async function uploadMaster() {
+        const file = document.getElementById('file_master').files[0];
+        const statusEl = document.getElementById('status_master');
+        if (!file) return;
+        statusEl.innerText = '解析中...'; statusEl.className = 'status loading';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const buffer = new Uint8Array(e.target.result);
+            const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
+
+            Papa.parse(unicodeString, {
+                header: true, skipEmptyLines: true,
+                complete: async function(results) {
+                    const insertData = results.data.map(row => ({
+                        user_id: currentUser.id, 
+                        plan_id: parseInt(cleanNum(row.plan_id)), 
+                        plan_name: row.plan_name, 
+                        min_usage: cleanNum(row.min_usage), 
+                        max_usage: cleanNum(row.max_usage), 
+                        base_fee: cleanNum(row.base_fee), 
+                        unit_price: cleanNum(row.unit_price)
+                    }));
+                    const { error } = await client.from('price_masters').insert(insertData);
+                    if (error) {
+                        statusEl.innerText = 'エラー: ' + error.message;
+                        statusEl.className = 'status error';
+                    } else { 
+                        statusEl.innerText = '✓ アップロード完了'; 
+                        statusEl.className = 'status success'; 
+                        updateCounts(); 
+                        loadEditableMaster(); 
+                    }
+                }
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // 修正: Shift-JIS対応と数値クレンジングを追加
+    async function uploadBilling() {
+        const file = document.getElementById('file_billing').files[0];
+        const statusEl = document.getElementById('status_billing');
+        if (!file) return;
+        statusEl.innerText = '送信中...'; statusEl.className = 'status loading';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const buffer = new Uint8Array(e.target.result);
+            const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
+
+            Papa.parse(unicodeString, {
+                header: true, skipEmptyLines: true,
+                complete: async function(results) {
+                    const insertData = results.data.map(row => ({ 
+                        user_id: currentUser.id, 
+                        plan_id: parseInt(cleanNum(row.plan_id)), 
+                        usage_m3: cleanNum(row.usage_m3) 
+                    }));
+                    
+                    let hasError = false;
+                    for (let i = 0; i < insertData.length; i += 1000) {
+                        const chunk = insertData.slice(i, i + 1000);
+                        const { error } = await client.from('billing_data').insert(chunk);
+                        if (error) { hasError = true; console.error(error); break; }
+                        statusEl.innerText = `送信中... (${i.toLocaleString()}件)`;
+                    }
+                    if (!hasError) { 
+                        statusEl.innerText = '✓ 完了'; 
+                        statusEl.className = 'status success'; 
+                        updateCounts(); 
+                    } else {
+                        statusEl.innerText = 'エラーが発生しました'; 
+                        statusEl.className = 'status error'; 
+                    }
+                }
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    async function deleteMaster() {
+        if (!confirm("料金表データを削除しますか？")) return;
+        await client.from('price_masters').delete().eq('user_id', currentUser.id);
+        updateCounts(); loadEditableMaster();
+    }
+
+    async function deleteBilling() {
+        if (!confirm("請求データを削除しますか？")) return;
+        await client.from('billing_data').delete().eq('user_id', currentUser.id);
+        updateCounts();
     }
 
     checkAuth();
