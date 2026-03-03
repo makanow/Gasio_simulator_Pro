@@ -84,7 +84,6 @@
         input:checked + .slider { background-color: var(--accent); }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* 異常検知用スタイル */
         .anomaly-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .anomaly-table th { background: #fef2f2; padding: 0.75rem; text-align: left; color: var(--red); border-bottom: 2px solid #fecaca; }
         .anomaly-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
@@ -224,8 +223,8 @@
                     <button class="nav-link-btn" onclick="exportAnomalyCSV()" style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--red); border-color: var(--red);">
                         📥 アラート対象のみ出力 (CSV)
                     </button>
-                    <button class="nav-link-btn" onclick="exportAllCSV()" style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--accent); border-color: var(--accent);">
-                        📥 全顧客の総合結果を出力 (CSV)
+                    <button class="nav-link-btn" onclick="exportComprehensiveCSV()" style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--accent); border-color: var(--accent); background: #f0f9ff;">
+                        📊 シミュレーション総合結果レポート (CSV)
                     </button>
                 </div>
                 
@@ -243,13 +242,14 @@
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
     let distChartObj = null, revChartObj = null, trendChartObj = null;
     let currentUser = null;
-    let trendChartData = null; 
     
-    // 計算とCSV出力用のグローバル変数
-    window.rawBillingData = [];
-    window.currentMasterRules = {};
-    window.currentAnomalies = [];
-    window.currentAllImpacts = [];
+    // 計算とCSV出力用のグローバル変数群
+    window.trendChartData = null; // トレンドグラフ用（年月ごとの集計）
+    window.rawBillingData = []; // DBから取得した生データ
+    window.currentMasterRules = {}; // 選択中のプランルール
+    window.currentAnomalies = []; // アラート対象顧客
+    window.currentAllImpacts = []; // 全顧客のシミュレーション明細
+    window.currentTrendRaw = {}; // 月別トレンドの生データ保持用
     
     const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
 
@@ -305,7 +305,7 @@
             const label = document.createElement('label');
             label.className = 'checkbox-item';
             const isChecked = idx === 0 ? 'checked' : '';
-            label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" ${isChecked}> ${p.plan_id}: ${p.plan_name}`;
+            label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" data-name="${p.plan_name}" ${isChecked}> ${p.plan_id}: ${p.plan_name}`;
             label.querySelector('input').addEventListener('change', () => {
                 loadMasterData();
                 loadTrendData();
@@ -433,6 +433,8 @@
         const labels = Array.from(monthsSet).sort();
         const displayLabels = labels.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6));
 
+        window.currentTrendRaw = { labels: displayLabels, data: aggregated, originalLabels: labels };
+
         const datasets = [];
         selectedIds.forEach((tId, idx) => {
             const dataPoints = labels.map(ym => aggregated[ym][tId] || 0);
@@ -449,7 +451,7 @@
             });
         });
 
-        trendChartData = { labels: displayLabels, datasets: datasets };
+        window.trendChartData = { labels: displayLabels, datasets: datasets };
         renderTrendChart();
     }
 
@@ -459,13 +461,13 @@
 
         if (trendChartObj) trendChartObj.destroy();
 
-        const configuredDatasets = trendChartData.datasets.map(ds => {
+        const configuredDatasets = window.trendChartData.datasets.map(ds => {
             return { ...ds, type: isBar ? 'bar' : 'line', fill: !isBar ? false : true };
         });
 
         trendChartObj = new Chart(ctx, {
             type: isBar ? 'bar' : 'line', 
-            data: { labels: trendChartData.labels, datasets: configuredDatasets },
+            data: { labels: window.trendChartData.labels, datasets: configuredDatasets },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
@@ -483,10 +485,10 @@
     }
 
     function toggleTrendChart() {
-        if (trendChartData) renderTrendChart();
+        if (window.trendChartData) renderTrendChart();
     }
 
-    // --- CSVダウンロード用の関数 ---
+    // --- CSVダウンロードの共通処理 ---
     function triggerDownload(csvContent, fileName) {
         const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excelで文字化けしないためのBOM
         const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -501,28 +503,90 @@
             alert("出力するアラートデータがありません。");
             return;
         }
-        let csvContent = "料金番号,値上げ上昇率(%),1年間の現行料金(円),1年間の新料金(円),年間負担増額(円)\n";
+        let csvContent = "料金番号,対象プラン,年間総使用量(m3),値上げ上昇率(%),現行料金(円),新料金(円),年間負担増額(円)\n";
         window.currentAnomalies.forEach(a => {
             let rate = (a.rate * 100).toFixed(1);
-            csvContent += `="${a.meterId}",${rate},${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
+            let usage = a.usageTotal.toFixed(1);
+            csvContent += `="${a.meterId}",${a.tariffId},${usage},${rate},${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
         });
         triggerDownload(csvContent, "anomaly_alert_data.csv");
     }
 
-    function exportAllCSV() {
+    // 🌟 新機能：画面の全ての情報を網羅した「総合レポート」のCSV出力
+    function exportComprehensiveCSV() {
         if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
-            alert("出力する総合データがありません。");
+            alert("シミュレーションを実行してから出力してください。");
             return;
         }
-        let csvContent = "料金番号,値上げ上昇率(%),1年間の現行料金(円),1年間の新料金(円),年間負担増額(円)\n";
+
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+        
+        let csv = `■ Gasio シミュレーション総合結果レポート,作成日時：${dateStr}\n\n`;
+
+        // 1. 前提条件（選択プランと新料金設定）
+        csv += "【シミュレーション前提条件】\n";
+        const checkboxes = document.querySelectorAll('.plan-check:checked');
+        const planNames = Array.from(checkboxes).map(cb => `${cb.value}:${cb.getAttribute('data-name')}`).join(" / ");
+        csv += `対象プラン,${planNames}\n`;
+        
+        let nBase = document.getElementById('n_base').value;
+        csv += `新・基本料金,${nBase} 円\n`;
+        
+        let limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => inp.value);
+        let prices = Array.from(document.querySelectorAll('.input-price')).map(inp => inp.value);
+        csv += "新・従量単価\n";
+        csv += "区画,上限(m3),単価(円)\n";
+        for(let i=0; i<prices.length; i++) {
+            let limitStr = i < limits.length ? `~${limits[i]}` : "それ以上";
+            csv += `区画${i+1},${limitStr},${prices[i]}\n`;
+        }
+        csv += "\n";
+
+        // 2. 全体サマリー
+        csv += "【全体サマリー（年間推定）】\n";
+        csv += `現行総収益,${document.getElementById('v_cur').innerText.replace(/¥|,/g, '')} 円\n`;
+        csv += `新料金総収益,${document.getElementById('v_new').innerText.replace(/¥|,/g, '')} 円\n`;
+        csv += `収益インパクト額,${document.getElementById('v_diff').innerText.replace(/¥|,|\+|/g, '')} 円\n`;
+        csv += `収益インパクト率,${document.getElementById('v_delta').innerText.replace(/▲|▼| /g, '')}\n\n`;
+
+        // 3. 月別・プラン別 使用量トレンド
+        csv += "【月別・プラン別 使用量トレンド(m3)】\n";
+        if(window.currentTrendRaw && window.currentTrendRaw.labels) {
+            let tLabels = window.currentTrendRaw.labels;
+            let origLabels = window.currentTrendRaw.originalLabels;
+            let tData = window.currentTrendRaw.data;
+            let pIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            csv += "年月," + pIds.map(id => `プラン${id}`).join(",") + "\n";
+            for(let i=0; i<tLabels.length; i++) {
+                let ym = origLabels[i];
+                let rowStr = tLabels[i];
+                for(let pId of pIds) {
+                    let val = tData[ym] && tData[ym][pId] ? tData[ym][pId].toFixed(1) : "0.0";
+                    rowStr += `,${val}`;
+                }
+                csv += rowStr + "\n";
+            }
+        }
+        csv += "\n";
+
+        // 4. 顧客（メーター）別 明細データ
+        csv += "【顧客別 シミュレーション明細】\n";
+        let threshold = parseFloat(document.getElementById('anomaly_threshold').value);
+        csv += `料金番号,対象プラン,年間総使用量(m3),現行年間料金(円),新年間料金(円),年間負担増額(円),値上げ上昇率(%),アラート判定(${threshold}%以上)\n`;
+        
         window.currentAllImpacts.forEach(a => {
             let rate = (a.rate * 100).toFixed(1);
-            csvContent += `="${a.meterId}",${rate},${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
+            let usage = a.usageTotal.toFixed(1);
+            let alertFlag = (a.rate * 100) >= threshold ? "⚠️該当" : "";
+            csv += `="${a.meterId}",${a.tariffId},${usage},${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)},${rate}%,${alertFlag}\n`;
         });
-        triggerDownload(csvContent, "all_simulation_results.csv");
+
+        triggerDownload(csv, "gasio_comprehensive_report.csv");
     }
 
-    // --- 値上げ影響度アラート機能 ---
+    // --- 値上げ影響度計算・アラート判定 ---
     function detectAnomalies() {
         const container = document.getElementById('anomaly_container');
         const listEl = document.getElementById('anomaly_list');
@@ -565,6 +629,7 @@
             return 0;
         }
 
+        // メーターごとの年間使用量と料金を集計
         let meterImpacts = {};
         window.rawBillingData.forEach(row => {
             let meterId = row.plan_id; 
@@ -574,18 +639,26 @@
             let curBill = getCurBill(usage, tariffId);
             let newBill = getNewBill(usage);
 
-            if (!meterImpacts[meterId]) meterImpacts[meterId] = { cur: 0, new: 0 };
+            if (!meterImpacts[meterId]) meterImpacts[meterId] = { cur: 0, new: 0, usageTotal: 0, tariffId: tariffId };
             meterImpacts[meterId].cur += curBill;
             meterImpacts[meterId].new += newBill;
+            meterImpacts[meterId].usageTotal += usage; // 総合出力用に年間使用量を保持
         });
 
         let allImpacts = [];
         for (let mId in meterImpacts) {
-            let cur = meterImpacts[mId].cur;
-            let n = meterImpacts[mId].new;
-            if (cur > 0) {
-                let rate = (n - cur) / cur;
-                allImpacts.push({ meterId: mId, rate: rate, cur: cur, new: n, diff: n - cur });
+            let d = meterImpacts[mId];
+            if (d.cur > 0) {
+                let rate = (d.new - d.cur) / d.cur;
+                allImpacts.push({ 
+                    meterId: mId, 
+                    tariffId: d.tariffId, 
+                    usageTotal: d.usageTotal, 
+                    rate: rate, 
+                    cur: d.cur, 
+                    new: d.new, 
+                    diff: d.new - d.cur 
+                });
             }
         }
         
@@ -599,12 +672,13 @@
 
         if (anomalies.length > 0) {
             let html = '<table class="anomaly-table">';
-            html += '<tr><th>料金番号 (顧客メーターID)</th><th>値上げ上昇率</th><th>1年間の現行料金 (累計)</th><th>1年間の新料金 (累計)</th><th>年間負担増額</th></tr>';
+            html += '<tr><th>料金番号 (顧客メーターID)</th><th>年間使用量(m3)</th><th>値上げ上昇率</th><th>1年間の現行料金</th><th>1年間の新料金</th><th>年間負担増額</th></tr>';
 
             anomalies.forEach(a => {
                 let rateStr = (a.rate * 100).toFixed(1) + '%';
                 html += `<tr>
                     <td style="font-family:monospace; font-weight:bold; font-size:1rem;">${a.meterId}</td>
+                    <td>${a.usageTotal.toFixed(1)}</td>
                     <td><span class="badge-up">⬆️ ${rateStr} アップ</span></td>
                     <td>¥${Math.round(a.cur).toLocaleString()}</td>
                     <td><b>¥${Math.round(a.new).toLocaleString()}</b></td>
