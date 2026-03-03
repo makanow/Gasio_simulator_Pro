@@ -2,297 +2,350 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>データ管理 - Gasio</title>
+    <title>Gasio 計算機Pro - データ管理</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
-    
     <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 2rem; }
-        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        h1 { font-size: 1.5rem; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
-        .section { margin-bottom: 2rem; padding: 1.5rem; background: #f1f5f9; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .section h2 { margin-top: 0; font-size: 1.2rem; color: #2c3e50; }
-        .btn { background: #3498db; color: #fff; border: none; padding: 0.8rem 1.5rem; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn:hover { background: #2980b9; }
-        .btn-outline { background: #fff; color: #3498db; border: 2px solid #3498db; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
-        .btn-outline:hover { background: #eff6ff; }
-        .status { margin-top: 1rem; font-size: 0.9rem; font-weight: bold; color: #e74c3c; }
-        .nav-link { display: inline-block; margin-bottom: 1rem; color: #3498db; text-decoration: none; font-weight: bold; }
-        .nav-link:hover { text-decoration: underline; }
+        :root { --bg: #f8fafc; --text-main: #1e293b; --border: #e2e8f0; --accent: #3498db; --red: #e74c3c; --dark: #2c3e50; --green: #2ecc71; }
+        body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
+        
+        .header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .main-title { font-size: 2rem; font-weight: 800; color: var(--dark); margin: 0; letter-spacing: -1px; }
+        .nav-btn { background: #fff; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: bold; text-decoration: none; color: var(--text-main); }
+        .nav-btn:hover { background: #f1f5f9; }
 
-        /* ガイド用のスタイル */
-        .guide-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; margin-bottom: 2rem; overflow: hidden; }
-        .guide-box summary { padding: 1rem 1.5rem; font-weight: bold; color: #1e3a8a; cursor: pointer; background: #dbeafe; display: flex; align-items: center; }
-        .guide-box summary:hover { background: #bfdbfe; }
-        .guide-content { padding: 1.5rem; font-size: 0.9rem; color: #334155; }
-        .guide-content h3 { font-size: 1rem; color: #1e40af; margin-top: 0; border-bottom: 1px dashed #93c5fd; padding-bottom: 0.5rem; }
-        .guide-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; margin-bottom: 1.5rem; font-size: 0.85rem; background: #fff; }
-        .guide-table th, .guide-table td { border: 1px solid #cbd5e1; padding: 0.5rem; text-align: left; }
-        .guide-table th { background: #f1f5f9; font-weight: bold; color: #475569; }
-        .auto-fix-list { margin: 0; padding-left: 1.5rem; color: #059669; font-weight: bold; }
+        .card-container { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 1.5rem; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+        .card h2 { margin-top: 0; font-size: 1.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+        
+        .upload-area { border: 2px dashed var(--border); padding: 1.5rem; text-align: center; border-radius: 8px; background: #f8fafc; margin-bottom: 1rem; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-label { background: var(--accent); color: white; padding: 0.8rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-block; transition: 0.2s; }
+        .upload-label:hover { background: #2980b9; }
+        .file-name { margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted); }
+
+        .action-zone { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .export-btn { background: white; color: var(--accent); border: 1px solid var(--accent); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .export-btn:hover { background: var(--accent); color: white; }
+        .delete-btn { background: white; color: var(--red); border: 1px solid var(--red); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .delete-btn:hover { background: var(--red); color: white; }
+        .save-btn { background: var(--green); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .save-btn:hover { background: #27ae60; }
+
+        .status { margin-top: 1rem; font-size: 0.9rem; font-weight: bold; text-align: center; }
+        .status.success { color: var(--green); }
+        .status.error { color: var(--red); }
+        .status.loading { color: var(--accent); }
+
+        /* エディタ用スタイル (折りたたみ対応) */
+        details.editor-section { margin-top: 2rem; padding-top: 1rem; border-top: 2px dashed var(--border); }
+        details.editor-section summary { font-size: 1.1rem; font-weight: bold; color: var(--dark); cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; outline: none; }
+        details.editor-section summary::-webkit-details-marker { display: none; }
+        details.editor-section summary::after { content: "▼"; font-size: 0.8rem; color: var(--text-muted); transition: transform 0.3s; }
+        details[open].editor-section summary::after { transform: rotate(180deg); }
+        .editor-content { margin-top: 1rem; }
+        
+        .plan-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
+        .plan-card-header { background: #f1f5f9; padding: 0.75rem 1rem; font-weight: bold; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+        .plan-card-header input[type="text"] { font-weight: bold; padding: 0.3rem; border: 1px solid #ccc; border-radius: 4px; width: 250px; }
+        .plan-card-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .plan-card-table th, .plan-card-table td { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        .plan-card-table input[type="number"] { width: 100px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; font-family: monospace; font-size: 1rem; }
+        .plan-card-table input[type="number"]:focus { border-color: var(--accent); outline: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <a href="index.html" class="nav-link">← シミュレーション画面に戻る</a>
-    <h1>⚙️ データ管理システム </h1>
+<div class="header">
+    <div class="main-title"><span style="color:#2c3e50">Gas</span><span style="color:#e74c3c">i</span><span style="color:#3498db">o</span> データ管理</div>
+    <a href="index.html" class="nav-btn">← シミュレーション画面へ戻る</a>
+</div>
 
-    <details class="guide-box" open>
-        <summary>📖 CSVインポートガイド</summary>
-        <div class="guide-content">
-            <p>本システムはデータ補正機能を備えています。以下の形式のExcelデータを<b>「CSV（カンマ区切り）」</b>で保存してアップロードしてください。</p>
-            
-            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
-                <h4 style="margin: 0 0 0.5rem 0; color: #065f46;">✨ システムが自動で補正する項目</h4>
-                <ul class="auto-fix-list">
-                    <li>文字化け防止: Windows特有の文字コード(Shift-JIS)を自動で正常化します。</li>
-                    <li>数字の表記揺れ: 「¥1,500」や「1,500.0」、全角「１５００」などを自動で変換します。</li>
-                    <li>日付の表記揺れ: 「2026年3月3日」や「2026/03/03」を自動変換します。</li>
-                </ul>
+<div class="card-container">
+    <div class="card">
+        <h2>1. 料金表マスター (price_masters) <span id="master_count" style="font-size:0.9rem; color:gray;">データ件数: 取得中...</span></h2>
+        
+        <div class="upload-area">
+            <p>CSVファイルからの新規追加・一括登録</p>
+            <label class="upload-label">
+                <input type="file" id="file_master" accept=".csv">CSVを選択
+            </label>
+            <div id="name_master" class="file-name">未選択</div>
+            <div style="margin-top: 10px;">
+                <button class="upload-label" onclick="uploadMaster()" style="background:#2c3e50;">アップロード実行</button>
             </div>
-
-            <h3>1. 料金表マスターの列構成</h3>
-            <table class="guide-table">
-                <tr><th>A列</th><th>B列</th><th>C列</th><th>D列</th><th>E列</th><th>F列</th></tr>
-                <tr><td>プランID<br>(例: 1)</td><td>区画名<br>(例: A区画)</td><td>最小使用量<br>(例: 0)</td><td>最大使用量<br>(例: 8.0 ※上限なしは99999)</td><td>基本料金<br>(例: 1500)</td><td>従量単価<br>(例: 650.5)</td></tr>
-            </table>
-            <button class="btn-outline" onclick="downloadSample('master')">📥 マスター用のサンプルCSVをダウンロード</button>
-
-            <h3 style="margin-top: 2rem;">2. 請求実績データ (調定数) の列構成</h3>
-            <table class="guide-table">
-                <tr><th>A列</th><th>B列</th><th>C列</th><th>D列</th><th>E列</th></tr>
-                <tr><td>対象年月<br>(例: 2026/03)</td><td>顧客ID<br>(例: CUST-001)</td><td>プランID<br>(例: 1 ※マスターと一致)</td><td>使用量(m³)<br>(例: 15.5)</td><td>請求額<br>(例: 8500)</td></tr>
-            </table>
-            <button class="btn-outline" onclick="downloadSample('billing')">📥 請求データ用のサンプルCSVをダウンロード</button>
+            <div id="status_master" class="status"></div>
         </div>
-    </details>
 
-    <div class="section">
-        <h2>📊 1. 料金表マスターのアップロード</h2>
-        <input type="file" id="file_master" accept=".csv">
-        <button class="btn" onclick="uploadMaster()">アップロード実行</button>
-        <div id="status_master" class="status"></div>
+        <details class="editor-section">
+            <summary>📝 登録済み料金表の直接編集</summary>
+            <div id="editable_master_container" class="editor-content">
+                <p style="color:gray; font-size:0.9rem;">データを読み込んでいます...</p>
+            </div>
+        </details>
+        
+        <div class="action-zone">
+            <button class="export-btn" onclick="downloadMaster()">📥 バックアップ (CSVダウンロード)</button>
+            <button class="delete-btn" onclick="deleteMaster()">🗑️ 全データ削除</button>
+        </div>
     </div>
 
-    <div class="section">
-        <h2>👤 2. 請求実績データ (調定数) のアップロード</h2>
-        <input type="file" id="file_billing" accept=".csv">
-        <button class="btn" onclick="uploadBilling()">アップロード実行</button>
-        <div id="status_billing" class="status"></div>
+    <div class="card">
+        <h2>2. 請求データ (billing_data) <span id="billing_count" style="font-size:0.9rem; color:gray;">データ件数: 取得中...</span></h2>
+        <div class="upload-area">
+            <p>※請求データは件数が多いため、CSVの再アップロードで更新してください。</p>
+            <label class="upload-label">
+                <input type="file" id="file_billing" accept=".csv">CSVを選択
+            </label>
+            <div id="name_billing" class="file-name">未選択</div>
+            <div style="margin-top: 10px;">
+                <button class="upload-label" onclick="uploadBilling()" style="background:#2c3e50;">アップロード実行</button>
+            </div>
+            <div id="status_billing" class="status"></div>
+        </div>
+        
+        <div class="action-zone">
+            <button class="export-btn" onclick="downloadBilling()">📥 バックアップ (CSVダウンロード)</button>
+            <button class="delete-btn" onclick="deleteBilling()">🗑️ 全データ削除</button>
+        </div>
     </div>
 </div>
 
 <script>
-    // -------------------------------------------------------------
-    // 1. データベース接続 ＆ 認証チェック
-    // -------------------------------------------------------------
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
     let currentUser = null;
 
-    client.auth.getSession().then(({ data: { session } }) => {
-        if (!session) {
-            window.location.href = 'login.html';
-        } else {
-            currentUser = session.user;
+    async function checkAuth() {
+        const { data: { session } } = await client.auth.getSession();
+        if (!session) { window.location.href = 'login.html'; return; }
+        currentUser = session.user;
+        updateCounts();
+        loadEditableMaster();
+    }
+
+    async function updateCounts() {
+        const { count: mCount } = await client.from('price_masters').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+        const { count: bCount } = await client.from('billing_data').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+        document.getElementById('master_count').innerText = `データ件数: ${mCount || 0}件`;
+        document.getElementById('billing_count').innerText = `データ件数: ${(bCount || 0).toLocaleString()}件`;
+    }
+
+    // --- 料金表の直接編集ロジック ---
+    async function loadEditableMaster() {
+        const container = document.getElementById('editable_master_container');
+        const { data, error } = await client.from('price_masters')
+            .select('*').eq('user_id', currentUser.id).order('plan_id').order('min_usage');
+            
+        if (error) { container.innerHTML = `<p style="color:red;">エラー: ${error.message}</p>`; return; }
+        if (!data || data.length === 0) { container.innerHTML = `<p style="color:gray; font-size:0.9rem;">現在登録されている料金表はありません。</p>`; return; }
+
+        const planGroups = {};
+        data.forEach(row => {
+            if (!planGroups[row.plan_id]) planGroups[row.plan_id] = { name: row.plan_name, tiers: [] };
+            planGroups[row.plan_id].tiers.push(row);
+        });
+
+        let html = '';
+        for (const [pId, pData] of Object.entries(planGroups)) {
+            html += `<div class="plan-card" id="plan_card_${pId}">
+                        <div class="plan-card-header">
+                            プランID: ${pId} <input type="text" id="name_${pId}" value="${pData.name}">
+                        </div>
+                        <table class="plan-card-table">
+                            <thead><tr><th>適用範囲 (m³)</th><th>基本料金 (円)</th><th>従量単価 (円)</th></tr></thead>
+                            <tbody>`;
+            pData.tiers.forEach(row => {
+                const maxU = row.max_usage >= 99999 ? '上限なし' : row.max_usage;
+                html += `<tr class="tier-row" data-plan="${pId}" data-min="${row.min_usage}">
+                            <td>${row.min_usage} ~ ${maxU}</td>
+                            <td><input type="number" class="edit-base" value="${row.base_fee}"></td>
+                            <td><input type="number" class="edit-unit" value="${row.unit_price}"></td>
+                         </tr>`;
+            });
+            html += `</tbody></table>
+                     <div style="padding: 0.75rem; text-align: right; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+                        <span id="save_msg_${pId}" style="margin-right:15px; font-size:0.9rem; font-weight:bold;"></span>
+                        <button class="save-btn" onclick="savePlan(${pId})">💾 変更を保存</button>
+                     </div>
+                     </div>`;
         }
+        container.innerHTML = html;
+    }
+
+    async function savePlan(planId) {
+        const msgEl = document.getElementById(`save_msg_${planId}`);
+        msgEl.innerText = "保存中..."; msgEl.style.color = "var(--accent)";
+        
+        const planName = document.getElementById(`name_${planId}`).value;
+        const rows = document.querySelectorAll(`tr[data-plan="${planId}"]`);
+        
+        let hasError = false;
+        for (let row of rows) {
+            const minU = parseFloat(row.getAttribute('data-min'));
+            const baseF = parseFloat(row.querySelector('.edit-base').value);
+            const unitP = parseFloat(row.querySelector('.edit-unit').value);
+
+            const { error } = await client.from('price_masters')
+                .update({ plan_name: planName, base_fee: baseF, unit_price: unitP })
+                .eq('user_id', currentUser.id).eq('plan_id', planId).eq('min_usage', minU);
+
+            if (error) { hasError = true; console.error(error); }
+        }
+
+        if (hasError) { msgEl.innerText = "一部保存失敗"; msgEl.style.color = "var(--red)"; }
+        else { msgEl.innerText = "✓ 保存完了！"; msgEl.style.color = "var(--green)"; setTimeout(() => msgEl.innerText="", 3000); }
+    }
+
+    // --- CSVアップロード・ダウンロード機能 ---
+    document.getElementById('file_master').addEventListener('change', (e) => {
+        document.getElementById('name_master').innerText = e.target.files[0] ? e.target.files[0].name : '未選択';
+    });
+    document.getElementById('file_billing').addEventListener('change', (e) => {
+        document.getElementById('name_billing').innerText = e.target.files[0] ? e.target.files[0].name : '未選択';
     });
 
-    // -------------------------------------------------------------
-    // 2. サンプルCSV ダウンロード機能
-    // -------------------------------------------------------------
-    function downloadSample(type) {
-        let csvContent = "\ufeff"; // BOM付与でExcelでの文字化け防止
-        let fileName = "";
-        
-        if (type === 'master') {
-            csvContent += "プランID,区画名,最小使用量(m3),最大使用量(m3),基本料金(円),従量単価(円/m3)\n";
-            csvContent += "1,A区画,0,8.0,1500,650.0\n";
-            csvContent += "1,B区画,8.1,30.0,2300,550.0\n";
-            csvContent += "1,C区画,30.1,99999,5300,450.0\n";
-            fileName = "sample_master.csv";
-        } else {
-            csvContent += "対象年月,顧客ID,適用プランID,使用量(m3),請求額(円)\n";
-            csvContent += "2026/03/01,CUST-0001,1,15.5,10825\n";
-            csvContent += "2026/03/01,CUST-0002,1,5.0,4750\n";
-            fileName = "sample_billing.csv";
-        }
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    function triggerDownload(csvContent, fileName) {
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", fileName);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        link.setAttribute("href", url); link.setAttribute("download", fileName);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
-    // -------------------------------------------------------------
-    // 3. データクレンジング関数群
-    // -------------------------------------------------------------
-    function cleanNumber(val) {
-        if (val === null || val === undefined || val === '') return 0;
-        let s = String(val);
-        // 全角数字を半角に
-        s = s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-        // 数字・ピリオド・マイナス以外を排除（￥やカンマを消す）
-        s = s.replace(/[^0-9.-]/g, '');
-        const num = parseFloat(s);
-        return isNaN(num) ? 0 : num;
+    async function downloadMaster() {
+        const { data } = await client.from('price_masters').select('plan_id, plan_name, min_usage, max_usage, base_fee, unit_price').eq('user_id', currentUser.id).order('plan_id').order('min_usage');
+        if (data && data.length > 0) triggerDownload(Papa.unparse(data), "gasio_price_masters.csv");
+        else alert("データがありません");
     }
 
-    function cleanDate(val) {
-        if (!val) return null;
-        let s = String(val).trim();
-        
-        // Excelシリアル値対応
-        if (!isNaN(s) && Number(s) > 30000) {
-            const d = new Date((Number(s) - 25569) * 86400 * 1000);
-            return d.toISOString().split('T')[0];
-        }
-
-        // 年月日表記をハイフンに変換
-        s = s.replace(/[年月]/g, '-').replace(/日/g, '').replace(/\//g, '-');
-        
-        const parts = s.split('-');
-        if (parts.length >= 2) {
-            let y = parts[0];
-            let m = parts[1].padStart(2, '0');
-            let d = parts.length >= 3 ? parts[2].padStart(2, '0') : '01';
-            const formatted = `${y}-${m}-${d}`;
-            // YYYY-MM-DDの完全一致チェック
-            if (/^\d{4}-\d{2}-\d{2}$/.test(formatted)) {
-                return formatted;
-            }
-        }
-        return null;
-    }
-
-    // CSVファイルの読み込みとShift-JIS自動判定
-    function parseCSVFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const buffer = new Uint8Array(e.target.result);
-                const unicodeString = Encoding.convert(buffer, {
-                    to: 'UNICODE',
-                    type: 'string'
-                });
-
-                Papa.parse(unicodeString, {
-                    header: false, // 列順で強制マッピング
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        resolve(results.data);
-                    },
-                    error: function(err) {
-                        reject(err);
-                    }
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        });
-    }
-
-    // -------------------------------------------------------------
-    // 4. アップロード実行処理
-    // -------------------------------------------------------------
-    async function uploadMaster() {
-        if (!currentUser) return alert("ユーザー認証エラー。ページをリロードしてください。");
-        const fileInput = document.getElementById('file_master');
-        const statusEl = document.getElementById('status_master');
-        if (!fileInput.files.length) return statusEl.innerText = "ファイルを選択してください。";
-
-        statusEl.innerText = "読み込み中...";
-        try {
-            const rawData = await parseCSVFile(fileInput.files[0]);
-            
-            // ヘッダー行判定：A列が数字に変換できなければ文字(ヘッダー)としてスキップ
-            if (rawData.length > 0 && isNaN(Number(rawData[0][0]))) {
-                rawData.shift();
-            }
-
-            const payload = rawData.filter(row => row.length >= 6).map(row => ({
-                user_id: currentUser.id, // 【重要】ログインユーザーの紐付け
-                plan_id: cleanNumber(row[0]),
-                plan_name: String(row[1]).trim() || '名称未設定',
-                min_usage: cleanNumber(row[2]),
-                max_usage: cleanNumber(row[3]) >= 99999 ? 999999 : cleanNumber(row[3]),
-                base_fee: cleanNumber(row[4]),
-                unit_price: cleanNumber(row[5])
-            }));
-
-            if (payload.length === 0) throw new Error("有効なデータが見つかりません。");
-
-            statusEl.innerText = "データベースへ登録中...";
-            // 【重要】自分のデータだけを初期化
-            await client.from('price_masters').delete().eq('user_id', currentUser.id);
-            
-            const { error } = await client.from('price_masters').insert(payload);
-            if (error) throw error;
-
-            statusEl.innerText = `✓ 完了: ${payload.length}件の料金マスターを登録しました！`;
-            statusEl.style.color = "#2ecc71";
-            fileInput.value = "";
-        } catch (err) {
-            statusEl.innerText = "エラー: " + err.message;
-            console.error(err);
-        }
-    }
-
-    async function uploadBilling() {
-        if (!currentUser) return alert("ユーザー認証エラー。ページをリロードしてください。");
-        const fileInput = document.getElementById('file_billing');
+    async function downloadBilling() {
         const statusEl = document.getElementById('status_billing');
-        if (!fileInput.files.length) return statusEl.innerText = "ファイルを選択してください。";
-
-        statusEl.innerText = "読み込み＆クレンジング中...";
-        try {
-            const rawData = await parseCSVFile(fileInput.files[0]);
-            
-            // ヘッダー行判定：C列(プランID)が数字に変換できなければ文字としてスキップ
-            if (rawData.length > 0 && isNaN(Number(rawData[0][2]))) {
-                rawData.shift();
-            }
-
-            const payload = rawData.filter(row => row.length >= 5).map(row => ({
-                user_id: currentUser.id, // 【重要】ログインユーザーの紐付け
-                target_month: cleanDate(row[0]),
-                customer_id: String(row[1]).trim(),
-                plan_id: cleanNumber(row[2]),
-                usage_m3: cleanNumber(row[3]),
-                billed_amount: cleanNumber(row[4])
-            })).filter(item => item.target_month !== null); // 日付クレンジング失敗行を除外
-
-            if (payload.length === 0) throw new Error("有効なデータが見つかりません。");
-
-            statusEl.innerText = `クレンジング完了。${payload.length}件をデータベースへ送信中...`;
-            
-            // 【重要】自分のデータだけを初期化
-            await client.from('billing_data').delete().eq('user_id', currentUser.id);
-
-            // タイムアウト対策のチャンク送信
-            const CHUNK_SIZE = 500;
-            let successCount = 0;
-
-            for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
-                const chunk = payload.slice(i, i + CHUNK_SIZE);
-                const { error } = await client.from('billing_data').insert(chunk);
-                if (error) throw error;
-                successCount += chunk.length;
-                statusEl.innerText = `送信中... (${successCount} / ${payload.length}件完了)`;
-            }
-
-            statusEl.innerText = `✓ 完了: ${successCount}件の請求データを登録しました！`;
-            statusEl.style.color = "#2ecc71";
-            fileInput.value = "";
-        } catch (err) {
-            statusEl.innerText = "エラー: " + err.message;
-            console.error(err);
+        statusEl.innerText = '準備中...'; statusEl.className = 'status loading';
+        let allData = []; let step = 1000; let start = 0; let fetchMore = true;
+        
+        while(fetchMore) {
+            const { data, error } = await client.from('billing_data').select('plan_id, usage_m3').eq('user_id', currentUser.id).range(start, start + step - 1);
+            if (error) { statusEl.innerText = 'エラー'; return; }
+            if (data && data.length > 0) { allData = allData.concat(data); start += data.length; statusEl.innerText = `取得中... (${allData.length.toLocaleString()}件)`; }
+            if (!data || data.length < step) fetchMore = false;
         }
+        if (allData.length > 0) { triggerDownload(Papa.unparse(allData), "gasio_billing_data.csv"); statusEl.innerText = `✓ バックアップ完了`; statusEl.className = 'status success'; }
     }
+
+    // ★修正: FileReaderとEncoding.jsを使ってShift-JISをUTF-8に変換
+    async function uploadMaster() {
+        const file = document.getElementById('file_master').files[0];
+        const statusEl = document.getElementById('status_master');
+        if (!file) return;
+        statusEl.innerText = '解析中...'; statusEl.className = 'status loading';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const buffer = new Uint8Array(e.target.result);
+            const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
+
+            Papa.parse(unicodeString, {
+                header: true, skipEmptyLines: true,
+                complete: async function(results) {
+                    // ★追加: 数値の安全なクレンジング関数
+                    const cleanNum = (val) => {
+                        if (val === undefined || val === null || val === '') return 0;
+                        let s = String(val).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+                        s = s.replace(/[^0-9.-]/g, '');
+                        return parseFloat(s) || 0;
+                    };
+
+                    const insertData = results.data.map(row => ({
+                        user_id: currentUser.id, 
+                        plan_id: cleanNum(row.plan_id), 
+                        plan_name: row.plan_name, 
+                        min_usage: cleanNum(row.min_usage), 
+                        max_usage: cleanNum(row.max_usage), 
+                        base_fee: cleanNum(row.base_fee), 
+                        unit_price: cleanNum(row.unit_price)
+                    }));
+                    
+                    const { error } = await client.from('price_masters').insert(insertData);
+                    if (error) {
+                        statusEl.innerText = 'エラー: ' + error.message;
+                        statusEl.className = 'status error';
+                    } else { 
+                        statusEl.innerText = '✓ アップロード完了'; 
+                        statusEl.className = 'status success'; 
+                        updateCounts(); 
+                        loadEditableMaster(); 
+                    }
+                }
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // ★修正: FileReaderとEncoding.jsを使ってShift-JISをUTF-8に変換
+    async function uploadBilling() {
+        const file = document.getElementById('file_billing').files[0];
+        const statusEl = document.getElementById('status_billing');
+        if (!file) return;
+        statusEl.innerText = '送信中...'; statusEl.className = 'status loading';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const buffer = new Uint8Array(e.target.result);
+            const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
+
+            Papa.parse(unicodeString, {
+                header: true, skipEmptyLines: true,
+                complete: async function(results) {
+                    // ★追加: 数値の安全なクレンジング関数
+                    const cleanNum = (val) => {
+                        if (val === undefined || val === null || val === '') return 0;
+                        let s = String(val).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+                        s = s.replace(/[^0-9.-]/g, '');
+                        return parseFloat(s) || 0;
+                    };
+
+                    const insertData = results.data.map(row => ({ 
+                        user_id: currentUser.id, 
+                        plan_id: cleanNum(row.plan_id), 
+                        usage_m3: cleanNum(row.usage_m3) 
+                    }));
+                    
+                    let hasError = false;
+                    for (let i = 0; i < insertData.length; i += 1000) {
+                        const chunk = insertData.slice(i, i + 1000);
+                        const { error } = await client.from('billing_data').insert(chunk);
+                        if (error) { hasError = true; console.error(error); break; }
+                        statusEl.innerText = `送信中... (${i.toLocaleString()}件)`;
+                    }
+                    if (!hasError) { 
+                        statusEl.innerText = '✓ 完了'; 
+                        statusEl.className = 'status success'; 
+                        updateCounts(); 
+                    } else {
+                        statusEl.innerText = 'エラーが発生しました'; 
+                        statusEl.className = 'status error'; 
+                    }
+                }
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    async function deleteMaster() {
+        if (!confirm("料金表データを削除しますか？")) return;
+        await client.from('price_masters').delete().eq('user_id', currentUser.id);
+        updateCounts(); loadEditableMaster();
+    }
+
+    async function deleteBilling() {
+        if (!confirm("請求データを削除しますか？")) return;
+        await client.from('billing_data').delete().eq('user_id', currentUser.id);
+        updateCounts();
+    }
+
+    checkAuth();
 </script>
 </body>
 </html>
