@@ -47,10 +47,10 @@
 
         .main { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
         
-        details.master-details { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: 0.3s; }
-        details.master-details summary { padding: 1rem 1.5rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; color: var(--dark); background: #f8fafc; }
+        details.master-details { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        details.master-details summary { padding: 1rem 1.5rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; list-style: none; display: flex; align-items: center; color: var(--dark); background: #f8fafc; }
         details.master-details summary::-webkit-details-marker { display: none; }
-        details.master-details summary::after { content: "▼"; font-size: 0.7rem; color: var(--text-muted); transition: transform 0.3s; }
+        details.master-details summary::after { content: "▼"; font-size: 0.7rem; color: var(--text-muted); transition: transform 0.3s; margin-left: auto; }
         details[open].master-details summary::after { transform: rotate(180deg); }
         
         .master-content { padding: 1.5rem; border-top: 1px solid var(--border); background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
@@ -207,20 +207,32 @@
     </div>
 
     <div id="anomaly_container" style="display: none; margin-top: 1.5rem;">
-        <div class="chart-box" style="border-left: 5px solid var(--red); height: auto;">
-            <div class="chart-header" style="margin-bottom: 0;">
-                <h3 style="color: var(--red); display: flex; align-items: center; gap: 15px;">
+        <details class="master-details" open style="border-left: 5px solid var(--red);">
+            <summary style="background: #fef2f2;">
+                <h3 style="color: var(--red); margin: 0; display: flex; align-items: center; gap: 15px;">
                     ⚠️ 大幅値上げアラート (シミュレーション結果)
-                    <div style="font-size: 0.85rem; color: var(--dark); font-weight: normal; display: flex; align-items: center; gap: 5px;">
+                    <div style="font-size: 0.85rem; color: var(--dark); font-weight: normal; display: flex; align-items: center; gap: 5px;" onclick="event.stopPropagation();">
                         検知ライン: 
                         <input type="number" id="anomaly_threshold" value="20" step="1" onchange="detectAnomalies()" style="width: 60px; padding: 0.2rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; font-weight: bold;"> %以上の上昇
                     </div>
                 </h3>
-                <span id="anomaly_count" style="font-weight:bold; color:var(--red); font-size:0.9rem;">0件</span>
-            </div>
-            <div id="anomaly_list" style="max-height: 250px; overflow-y: auto; margin-top: 1rem;">
+                <span id="anomaly_count" style="font-weight:bold; color:var(--red); font-size:0.9rem; margin-left:15px; margin-right: 15px;">0件</span>
+            </summary>
+            
+            <div style="padding: 1.5rem; border-top: 1px solid var(--border); background: #fff;">
+                <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                    <button class="nav-link-btn" onclick="exportAnomalyCSV()" style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--red); border-color: var(--red);">
+                        📥 アラート対象のみ出力 (CSV)
+                    </button>
+                    <button class="nav-link-btn" onclick="exportAllCSV()" style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--accent); border-color: var(--accent);">
+                        📥 全顧客の総合結果を出力 (CSV)
+                    </button>
                 </div>
-        </div>
+                
+                <div id="anomaly_list" style="max-height: 250px; overflow-y: auto;">
+                    </div>
+            </div>
+        </details>
     </div>
 
 </div>
@@ -233,9 +245,11 @@
     let currentUser = null;
     let trendChartData = null; 
     
-    // 計算用のグローバル変数
+    // 計算とCSV出力用のグローバル変数
     window.rawBillingData = [];
     window.currentMasterRules = {};
+    window.currentAnomalies = [];
+    window.currentAllImpacts = [];
     
     const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
 
@@ -322,7 +336,6 @@
             planGroups[row.plan_id].tiers.push(row);
         });
         
-        // 異常検知計算用にグローバル保存
         window.currentMasterRules = planGroups;
 
         let html = '';
@@ -390,7 +403,6 @@
             }
         }
 
-        // 異常検知計算用にグローバル保存
         window.rawBillingData = allData;
 
         if (!allData || allData.length === 0) {
@@ -474,7 +486,43 @@
         if (trendChartData) renderTrendChart();
     }
 
-    // --- 新規追加: 値上げ影響度アラート機能 ---
+    // --- CSVダウンロード用の関数 ---
+    function triggerDownload(csvContent, fileName) {
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excelで文字化けしないためのBOM
+        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url); link.setAttribute("download", fileName);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    }
+
+    function exportAnomalyCSV() {
+        if (!window.currentAnomalies || window.currentAnomalies.length === 0) {
+            alert("出力するアラートデータがありません。");
+            return;
+        }
+        let csvContent = "料金番号,値上げ上昇率(%),1年間の現行料金(円),1年間の新料金(円),年間負担増額(円)\n";
+        window.currentAnomalies.forEach(a => {
+            let rate = (a.rate * 100).toFixed(1);
+            csvContent += `="${a.meterId}",${rate},${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
+        });
+        triggerDownload(csvContent, "anomaly_alert_data.csv");
+    }
+
+    function exportAllCSV() {
+        if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
+            alert("出力する総合データがありません。");
+            return;
+        }
+        let csvContent = "料金番号,値上げ上昇率(%),1年間の現行料金(円),1年間の新料金(円),年間負担増額(円)\n";
+        window.currentAllImpacts.forEach(a => {
+            let rate = (a.rate * 100).toFixed(1);
+            csvContent += `="${a.meterId}",${rate},${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
+        });
+        triggerDownload(csvContent, "all_simulation_results.csv");
+    }
+
+    // --- 値上げ影響度アラート機能 ---
     function detectAnomalies() {
         const container = document.getElementById('anomaly_container');
         const listEl = document.getElementById('anomaly_list');
@@ -487,12 +535,10 @@
             return;
         }
 
-        // 新料金マトリックスの取得
         let nBase = parseFloat(document.getElementById('n_base').value);
         let limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value));
         let prices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value));
 
-        // 新料金の計算関数
         function getNewBill(usage) {
             if (usage === 0) return nBase;
             for (let i = 0; i < prices.length; i++) {
@@ -505,7 +551,6 @@
             return nBase;
         }
 
-        // 現行料金の計算関数
         function getCurBill(usage, tariffId) {
             let plan = window.currentMasterRules[tariffId];
             if (!plan || !plan.tiers) return 0;
@@ -520,10 +565,9 @@
             return 0;
         }
 
-        // メーター(料金番号)ごとの年間合計料金を計算
         let meterImpacts = {};
         window.rawBillingData.forEach(row => {
-            let meterId = row.plan_id; // CSVの料金番号
+            let meterId = row.plan_id; 
             let tariffId = row.tariff_id;
             let usage = parseFloat(row.usage_amount) || 0;
 
@@ -535,23 +579,25 @@
             meterImpacts[meterId].new += newBill;
         });
 
-        // 閾値を超えるものを抽出
-        let anomalies = [];
+        let allImpacts = [];
         for (let mId in meterImpacts) {
             let cur = meterImpacts[mId].cur;
             let n = meterImpacts[mId].new;
             if (cur > 0) {
                 let rate = (n - cur) / cur;
-                if (rate >= threshold) {
-                    anomalies.push({ meterId: mId, rate: rate, cur: cur, new: n, diff: n - cur });
-                }
+                allImpacts.push({ meterId: mId, rate: rate, cur: cur, new: n, diff: n - cur });
             }
         }
+        
+        // 全顧客の結果を保存
+        allImpacts.sort((a, b) => b.rate - a.rate);
+        window.currentAllImpacts = allImpacts;
+
+        // 閾値を超えるアラート対象を抽出
+        let anomalies = allImpacts.filter(a => a.rate >= threshold);
+        window.currentAnomalies = anomalies;
 
         if (anomalies.length > 0) {
-            // 上昇率が高い順に並び替え
-            anomalies.sort((a, b) => b.rate - a.rate);
-
             let html = '<table class="anomaly-table">';
             html += '<tr><th>料金番号 (顧客メーターID)</th><th>値上げ上昇率</th><th>1年間の現行料金 (累計)</th><th>1年間の新料金 (累計)</th><th>年間負担増額</th></tr>';
 
@@ -715,7 +761,6 @@
             }
         });
 
-        // ✅ ここで異常検知ロジックを呼び出し
         detectAnomalies();
 
         btn.innerText = "シミュレーション実行"; status.innerText = "✓ 完了";
