@@ -5,6 +5,7 @@
     <title>Gasio 計算機Pro - データ管理</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
     <style>
         :root { --bg: #f8fafc; --text-main: #1e293b; --border: #e2e8f0; --accent: #3498db; --red: #e74c3c; --dark: #2c3e50; --green: #2ecc71; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
@@ -52,6 +53,17 @@
         .plan-card-table th, .plan-card-table td { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
         .plan-card-table input[type="number"] { width: 100px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; font-family: monospace; font-size: 1rem; }
         .plan-card-table input[type="number"]:focus { border-color: var(--accent); outline: none; }
+
+        /* ガイド用追加スタイル */
+        .guide-box { width: 100%; max-width: 900px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; margin-bottom: 1.5rem; overflow: hidden; }
+        .guide-box summary { padding: 1rem 1.5rem; font-weight: bold; color: #1e3a8a; cursor: pointer; background: #dbeafe; display: flex; align-items: center; }
+        .guide-box summary:hover { background: #bfdbfe; }
+        .guide-content { padding: 1.5rem; font-size: 0.9rem; color: #334155; }
+        .guide-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; margin-bottom: 1.5rem; font-size: 0.85rem; background: #fff; }
+        .guide-table th, .guide-table td { border: 1px solid #cbd5e1; padding: 0.5rem; text-align: left; }
+        .guide-table th { background: #f1f5f9; font-weight: bold; color: #475569; }
+        .btn-outline { background: #fff; color: var(--accent); border: 2px solid var(--accent); padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
+        .btn-outline:hover { background: #eff6ff; }
     </style>
 </head>
 <body>
@@ -60,6 +72,30 @@
     <div class="main-title"><span style="color:#2c3e50">Gas</span><span style="color:#e74c3c">i</span><span style="color:#3498db">o</span> データ管理</div>
     <a href="index.html" class="nav-btn">← シミュレーション画面へ戻る</a>
 </div>
+
+<details class="guide-box" open>
+    <summary>📖 CSVアップロード用テンプレートと仕様</summary>
+    <div class="guide-content">
+        <p>※インポートエラーを防ぐため、以下のテンプレートをダウンロードしてご使用ください。</p>
+        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; color: #065f46; font-size: 0.85rem;">
+            <b>自動補正機能:</b> ファイルの文字化け(Shift-JIS)や、数値内のカンマ(1,500など)、全角数字はシステムで自動的に修正されます。
+        </div>
+
+        <h3 style="margin-top:0;">1. 料金表マスター (price_masters)</h3>
+        <table class="guide-table">
+            <tr><th>plan_id</th><th>plan_name</th><th>min_usage</th><th>max_usage</th><th>base_fee</th><th>unit_price</th></tr>
+            <tr><td>プランID(例:1)</td><td>プラン名</td><td>最小(m³)</td><td>最大(m³上限なしは99999)</td><td>基本料金</td><td>従量単価</td></tr>
+        </table>
+        <button class="btn-outline" onclick="downloadSample('master')">📥 マスター用テンプレートをダウンロード</button>
+
+        <h3 style="margin-top: 2rem;">2. 請求データ (billing_data)</h3>
+        <table class="guide-table">
+            <tr><th>plan_id</th><th>usage_m3</th></tr>
+            <tr><td>適用プランID(例:1)</td><td>使用量(m³)(例:15.5)</td></tr>
+        </table>
+        <button class="btn-outline" onclick="downloadSample('billing')">📥 請求データ用テンプレートをダウンロード</button>
+    </div>
+</details>
 
 <div class="card-container">
     <div class="card">
@@ -213,6 +249,32 @@
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
+    // 追加: サンプルCSVダウンロード
+    function downloadSample(type) {
+        let csvContent = "";
+        let fileName = "";
+        if (type === 'master') {
+            csvContent += "plan_id,plan_name,min_usage,max_usage,base_fee,unit_price\n";
+            csvContent += "1,標準プラン,0,8.0,1500,650.0\n";
+            csvContent += "1,標準プラン,8.1,99999,2300,550.0\n";
+            fileName = "template_master.csv";
+        } else {
+            csvContent += "plan_id,usage_m3\n";
+            csvContent += "1,15.5\n";
+            csvContent += "1,5.0\n";
+            fileName = "template_billing.csv";
+        }
+        triggerDownload(csvContent, fileName);
+    }
+
+    // 追加: 数値クレンジング関数
+    function cleanNum(val) {
+        if (val === undefined || val === null || val === '') return 0;
+        let s = String(val).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+        s = s.replace(/[^0-9.-]/g, '');
+        return parseFloat(s) || 0;
+    }
+
     async function downloadMaster() {
         const { data } = await client.from('price_masters').select('plan_id, plan_name, min_usage, max_usage, base_fee, unit_price').eq('user_id', currentUser.id).order('plan_id').order('min_usage');
         if (data && data.length > 0) triggerDownload(Papa.unparse(data), "gasio_price_masters.csv");
@@ -233,45 +295,86 @@
         if (allData.length > 0) { triggerDownload(Papa.unparse(allData), "gasio_billing_data.csv"); statusEl.innerText = `✓ バックアップ完了`; statusEl.className = 'status success'; }
     }
 
+    // 修正: Shift-JIS対応と数値クレンジングを追加
     async function uploadMaster() {
         const file = document.getElementById('file_master').files[0];
         const statusEl = document.getElementById('status_master');
         if (!file) return;
         statusEl.innerText = '解析中...'; statusEl.className = 'status loading';
 
-        Papa.parse(file, {
-            header: true, skipEmptyLines: true,
-            complete: async function(results) {
-                const insertData = results.data.map(row => ({
-                    user_id: currentUser.id, plan_id: parseInt(row.plan_id), plan_name: row.plan_name, min_usage: parseFloat(row.min_usage), max_usage: parseFloat(row.max_usage), base_fee: parseFloat(row.base_fee), unit_price: parseFloat(row.unit_price)
-                }));
-                const { error } = await client.from('price_masters').insert(insertData);
-                if (error) statusEl.innerText = 'エラー';
-                else { statusEl.innerText = '✓ アップロード完了'; statusEl.className = 'status success'; updateCounts(); loadEditableMaster(); }
-            }
-        });
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const buffer = new Uint8Array(e.target.result);
+            const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
+
+            Papa.parse(unicodeString, {
+                header: true, skipEmptyLines: true,
+                complete: async function(results) {
+                    const insertData = results.data.map(row => ({
+                        user_id: currentUser.id, 
+                        plan_id: parseInt(cleanNum(row.plan_id)), 
+                        plan_name: row.plan_name, 
+                        min_usage: cleanNum(row.min_usage), 
+                        max_usage: cleanNum(row.max_usage), 
+                        base_fee: cleanNum(row.base_fee), 
+                        unit_price: cleanNum(row.unit_price)
+                    }));
+                    const { error } = await client.from('price_masters').insert(insertData);
+                    if (error) {
+                        statusEl.innerText = 'エラー: ' + error.message;
+                        statusEl.className = 'status error';
+                    } else { 
+                        statusEl.innerText = '✓ アップロード完了'; 
+                        statusEl.className = 'status success'; 
+                        updateCounts(); 
+                        loadEditableMaster(); 
+                    }
+                }
+            });
+        };
+        reader.readAsArrayBuffer(file);
     }
 
+    // 修正: Shift-JIS対応と数値クレンジングを追加
     async function uploadBilling() {
         const file = document.getElementById('file_billing').files[0];
         const statusEl = document.getElementById('status_billing');
         if (!file) return;
         statusEl.innerText = '送信中...'; statusEl.className = 'status loading';
 
-        Papa.parse(file, {
-            header: true, skipEmptyLines: true,
-            complete: async function(results) {
-                const insertData = results.data.map(row => ({ user_id: currentUser.id, plan_id: parseInt(row.plan_id), usage_m3: parseFloat(row.usage_m3) }));
-                let hasError = false;
-                for (let i = 0; i < insertData.length; i += 1000) {
-                    const chunk = insertData.slice(i, i + 1000);
-                    const { error } = await client.from('billing_data').insert(chunk);
-                    if (error) { hasError = true; break; }
-                    statusEl.innerText = `送信中... (${i.toLocaleString()}件)`;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const buffer = new Uint8Array(e.target.result);
+            const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
+
+            Papa.parse(unicodeString, {
+                header: true, skipEmptyLines: true,
+                complete: async function(results) {
+                    const insertData = results.data.map(row => ({ 
+                        user_id: currentUser.id, 
+                        plan_id: parseInt(cleanNum(row.plan_id)), 
+                        usage_m3: cleanNum(row.usage_m3) 
+                    }));
+                    
+                    let hasError = false;
+                    for (let i = 0; i < insertData.length; i += 1000) {
+                        const chunk = insertData.slice(i, i + 1000);
+                        const { error } = await client.from('billing_data').insert(chunk);
+                        if (error) { hasError = true; console.error(error); break; }
+                        statusEl.innerText = `送信中... (${i.toLocaleString()}件)`;
+                    }
+                    if (!hasError) { 
+                        statusEl.innerText = '✓ 完了'; 
+                        statusEl.className = 'status success'; 
+                        updateCounts(); 
+                    } else {
+                        statusEl.innerText = 'エラーが発生しました'; 
+                        statusEl.className = 'status error'; 
+                    }
                 }
-                if (!hasError) { statusEl.innerText = '✓ 完了'; statusEl.className = 'status success'; updateCounts(); }
-            }
-        });
+            });
+        };
+        reader.readAsArrayBuffer(file);
     }
 
     async function deleteMaster() {
