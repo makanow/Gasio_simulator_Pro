@@ -124,7 +124,7 @@
     <div class="card">
         <h2>2. 請求データ (v3一括インポート) <span id="billing_count" style="font-size:0.9rem; color:gray;">データ件数: 取得中...</span></h2>
         <div class="upload-area">
-            <p>CSV形式: <b>年月, 料金番号, 料金表番号, 使用量</b> (4項目のみ・日付は自動判別)</p>
+            <p>CSV形式: <b>年月, 料金番号, 料金表番号, 使用量</b> (ヘッダー行は自動でスキップされます)</p>
             <label class="upload-label">
                 <input type="file" id="file_billing" accept=".csv">CSVを選択
             </label>
@@ -293,7 +293,6 @@
                         min_usage: cleanNum(row.min_usage), max_usage: cleanNum(row.max_usage), base_fee: cleanNum(row.base_fee), unit_price: cleanNum(row.unit_price)
                     }));
                     
-                    // 重複エラー回避のため、insertからupsertに変更
                     const { error } = await client.from('price_masters').upsert(insertData);
                     
                     if (error) { statusEl.innerText = 'エラー: ' + error.message; statusEl.className = 'status error'; } 
@@ -349,16 +348,32 @@
                     log(`${rawData.length}件のデータを検出。クレンジング開始...`);
                     
                     const insertData = rawData.map((row, idx) => {
+                        // 1行目で、4列目（使用量）が数字に変換できない文字列（ヘッダー）ならスキップ
+                        if (idx === 0 && isNaN(parseFloat(row[3]))) {
+                            log(`ℹ️ 1行目をヘッダーとしてスキップしました。`);
+                            return null;
+                        }
+
                         const ym = standardizeYearMonth(row[0]);
-                        if (!ym) log(`⚠️ 行 ${idx+1}: 年月の解釈に失敗 (${row[0]})`);
+                        if (!ym) {
+                            log(`⚠️ 行 ${idx+1}: 年月の解釈に失敗 (${row[0]})`);
+                            return null;
+                        }
+
                         return {
                             user_id: currentUser.id, year_month: ym, plan_id: String(row[1] || "").trim(),
                             tariff_id: String(row[2] || "").trim(), usage_amount: parseFloat(row[3]) || 0
                         };
-                    }).filter(d => d.year_month && d.plan_id);
+                    }).filter(d => d !== null && d.year_month && d.plan_id);
 
                     log(`クレンジング完了。有効データ: ${insertData.length}件`);
                     
+                    if (insertData.length === 0) {
+                        statusEl.innerText = '有効なデータがありませんでした';
+                        statusEl.className = 'status error';
+                        return;
+                    }
+
                     let hasError = false;
                     for (let i = 0; i < insertData.length; i += 1000) {
                         const chunk = insertData.slice(i, i + 1000);
