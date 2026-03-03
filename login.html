@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>Gasio 計算機Pro - データ管理 (v3対応版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js\"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js\"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
     <style>
         :root { --bg: #f8fafc; --text-main: #1e293b; --border: #e2e8f0; --accent: #3498db; --red: #e74c3c; --dark: #2c3e50; --green: #2ecc71; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
@@ -52,8 +52,9 @@
 </div>
 
 <script>
-    const SUPABASE_URL = "https://etbsbcbzzxkbkasixmdb.supabase.co"; // ご自身のURLに書き換えてください
-    const SUPABASE_KEY = "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI"; // ご自身のKEYに書き換えてください
+    // ナガセさんの正しい接続情報をセット済みです！
+    const SUPABASE_URL = "https://etbsbcbzzxkbkasixmdb.supabase.co"; 
+    const SUPABASE_KEY = "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI"; 
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let currentUser = null;
 
@@ -66,7 +67,7 @@
 
     async function checkAuth() {
         const { data: { user } } = await client.auth.getUser();
-        if (!user) { location.href = 'auth.html'; return; }
+        if (!user) { location.href = 'login.html'; return; }
         currentUser = user;
         log(`ログイン中: ${user.email}`);
     }
@@ -76,7 +77,6 @@
         if (!val) return null;
         let s = val.toString().trim().replace(/["']/g, "");
 
-        // 2024/03/01 や 2023-03-01 形式
         if (s.includes('/') || s.includes('-')) {
             const date = new Date(s);
             if (!isNaN(date.getTime())) {
@@ -85,11 +85,9 @@
                 return `${y}${m}`;
             }
         }
-        // 2403 形式 (4桁)
         if (s.length === 4 && /^\d+$/.test(s)) {
             return "20" + s;
         }
-        // 202403 形式 (6桁)
         if (s.length === 6 && /^\d+$/.test(s)) {
             return s;
         }
@@ -111,7 +109,7 @@
             const unicodeString = Encoding.convert(codes, { to: 'UNICODE', from: encoding, type: 'string' });
 
             Papa.parse(unicodeString, {
-                header: false, // 4項目固定なのでfalse
+                header: false,
                 skipEmptyLines: true,
                 complete: async (results) => {
                     const rawData = results.data;
@@ -128,7 +126,7 @@
                             tariff_id: String(row[2] || "").trim(),
                             usage_amount: parseFloat(row[3]) || 0
                         };
-                    }).filter(d => d.year_month && d.plan_id); // 最低限のバリデーション
+                    }).filter(d => d.year_month && d.plan_id);
 
                     log(`クレンジング完了。有効データ: ${insertData.length}件`);
                     
