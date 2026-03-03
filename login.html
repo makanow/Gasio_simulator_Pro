@@ -147,7 +147,7 @@
 </div>
 
 <script>
-    // ナガセさんの元のコードに書かれていた正しい接続情報
+    // 接続情報
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
     let currentUser = null;
 
@@ -174,7 +174,7 @@
         document.getElementById('billing_count').innerText = `データ件数: ${(bCount || 0).toLocaleString()}件`;
     }
 
-    // --- 料金表マスター（元の機能） ---
+    // --- 料金表マスター ---
     async function loadEditableMaster() {
         const container = document.getElementById('editable_master_container');
         const { data, error } = await client.from('price_masters')
@@ -292,7 +292,10 @@
                         user_id: currentUser.id, plan_id: parseInt(cleanNum(row.plan_id)), plan_name: row.plan_name, 
                         min_usage: cleanNum(row.min_usage), max_usage: cleanNum(row.max_usage), base_fee: cleanNum(row.base_fee), unit_price: cleanNum(row.unit_price)
                     }));
-                    const { error } = await client.from('price_masters').insert(insertData);
+                    
+                    // 重複エラー回避のため、insertからupsertに変更
+                    const { error } = await client.from('price_masters').upsert(insertData);
+                    
                     if (error) { statusEl.innerText = 'エラー: ' + error.message; statusEl.className = 'status error'; } 
                     else { statusEl.innerText = '✓ アップロード完了'; statusEl.className = 'status success'; updateCounts(); loadEditableMaster(); }
                 }
