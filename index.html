@@ -68,9 +68,7 @@
         .delta { font-size: 0.9rem; font-weight: 700; }
         .delta.plus { color: var(--green); } .delta.minus { color: var(--red); }
         
-        /* グラフエリアの調整 */
         .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; height: 350px; }
-        /* トレンドグラフは1行まるごと使う */
         .trend-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; height: 350px; margin-top: 1.5rem; }
         
         .chart-box { background: #fff; border-radius: 8px; border: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -78,7 +76,6 @@
         .chart-box h3 { margin: 0; font-size: 1rem; color: var(--dark); }
         .canvas-container { flex: 1; position: relative; min-height: 0; }
         
-        /* トグルスイッチのスタイル */
         .toggle-container { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -86,6 +83,12 @@
         .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--accent); }
         input:checked + .slider:before { transform: translateX(20px); }
+
+        /* 異常検知用スタイル */
+        .anomaly-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .anomaly-table th { background: #fef2f2; padding: 0.75rem; text-align: left; color: var(--red); border-bottom: 2px solid #fecaca; }
+        .anomaly-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        .badge-up { background: var(--red); color: white; padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -202,6 +205,24 @@
             <div id="trend_status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; display: none;">データを読み込んでいます...</div>
         </div>
     </div>
+
+    <div id="anomaly_container" style="display: none; margin-top: 1.5rem;">
+        <div class="chart-box" style="border-left: 5px solid var(--red); height: auto;">
+            <div class="chart-header" style="margin-bottom: 0;">
+                <h3 style="color: var(--red); display: flex; align-items: center; gap: 15px;">
+                    ⚠️ 大幅値上げアラート (シミュレーション結果)
+                    <div style="font-size: 0.85rem; color: var(--dark); font-weight: normal; display: flex; align-items: center; gap: 5px;">
+                        検知ライン: 
+                        <input type="number" id="anomaly_threshold" value="20" step="1" onchange="detectAnomalies()" style="width: 60px; padding: 0.2rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; font-weight: bold;"> %以上の上昇
+                    </div>
+                </h3>
+                <span id="anomaly_count" style="font-weight:bold; color:var(--red); font-size:0.9rem;">0件</span>
+            </div>
+            <div id="anomaly_list" style="max-height: 250px; overflow-y: auto; margin-top: 1rem;">
+                </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -211,6 +232,11 @@
     let distChartObj = null, revChartObj = null, trendChartObj = null;
     let currentUser = null;
     let trendChartData = null; 
+    
+    // 計算用のグローバル変数
+    window.rawBillingData = [];
+    window.currentMasterRules = {};
+    
     const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
 
     client.auth.getSession().then(({ data: { session } }) => {
@@ -283,6 +309,7 @@
         
         if (selectedIds.length === 0) {
             container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; margin:0; grid-column: 1 / -1;">プランが選択されていません。</p>';
+            window.currentMasterRules = {};
             return;
         }
 
@@ -294,6 +321,9 @@
             if (!planGroups[row.plan_id]) planGroups[row.plan_id] = { name: row.plan_name, tiers: [] };
             planGroups[row.plan_id].tiers.push(row);
         });
+        
+        // 異常検知計算用にグローバル保存
+        window.currentMasterRules = planGroups;
 
         let html = '';
         for (const [pId, pData] of Object.entries(planGroups)) {
@@ -316,7 +346,6 @@
         container.innerHTML = html;
     }
 
-    // --- トレンドデータの取得と描画 (全件取得ループ版) ---
     async function loadTrendData() {
         const checkboxes = document.querySelectorAll('.plan-check:checked');
         const selectedIds = Array.from(checkboxes).map(cb => cb.value); 
@@ -324,6 +353,8 @@
         
         if (selectedIds.length === 0) {
             if (trendChartObj) trendChartObj.destroy();
+            document.getElementById('anomaly_container').style.display = 'none';
+            window.rawBillingData = [];
             return;
         }
 
@@ -336,7 +367,7 @@
 
         while(fetchMore) {
             const { data, error } = await client.from('gas_data_v3')
-                .select('year_month, tariff_id, usage_amount')
+                .select('year_month, tariff_id, plan_id, usage_amount')
                 .in('tariff_id', selectedIds)
                 .eq('user_id', currentUser.id)
                 .order('year_month', { ascending: true })
@@ -359,12 +390,14 @@
             }
         }
 
-        const data = allData;
+        // 異常検知計算用にグローバル保存
+        window.rawBillingData = allData;
 
-        if (!data || data.length === 0) {
+        if (!allData || allData.length === 0) {
             statusEl.innerText = "データがありません。v3インポーターからデータを登録してください。";
             statusEl.style.display = 'block';
             if (trendChartObj) trendChartObj.destroy();
+            document.getElementById('anomaly_container').style.display = 'none';
             return;
         }
 
@@ -373,7 +406,7 @@
         const aggregated = {};
         const monthsSet = new Set();
         
-        data.forEach(row => {
+        allData.forEach(row => {
             const ym = row.year_month;
             const tId = row.tariff_id;
             const amt = parseFloat(row.usage_amount) || 0;
@@ -415,59 +448,132 @@
         if (trendChartObj) trendChartObj.destroy();
 
         const configuredDatasets = trendChartData.datasets.map(ds => {
-            return {
-                ...ds,
-                type: isBar ? 'bar' : 'line',
-                fill: !isBar ? false : true, 
-            };
+            return { ...ds, type: isBar ? 'bar' : 'line', fill: !isBar ? false : true };
         });
 
         trendChartObj = new Chart(ctx, {
             type: isBar ? 'bar' : 'line', 
-            data: {
-                labels: trendChartData.labels,
-                datasets: configuredDatasets
-            },
+            data: { labels: trendChartData.labels, datasets: configuredDatasets },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { position: 'top' },
                     datalabels: { display: false }, 
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) label += ': ';
-                                if (context.parsed.y !== null) label += context.parsed.y.toLocaleString() + ' m³';
-                                return label;
-                            }
-                        }
-                    }
+                    tooltip: { callbacks: { label: function(c) { return (c.dataset.label || '') + ': ' + c.parsed.y.toLocaleString() + ' m³'; } } }
                 },
                 scales: {
-                    x: {
-                        stacked: isBar, 
-                        grid: { display: false }
-                    },
-                    y: {
-                        stacked: isBar, 
-                        beginAtZero: true,
-                        grid: { color: '#f1f5f9' },
-                        title: { display: true, text: '総使用量 (m³)', font: {size: 11} }
-                    }
+                    x: { stacked: isBar, grid: { display: false } },
+                    y: { stacked: isBar, beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '総使用量 (m³)', font: {size: 11} } }
                 }
             }
         });
     }
 
     function toggleTrendChart() {
-        if (trendChartData) {
-            renderTrendChart();
+        if (trendChartData) renderTrendChart();
+    }
+
+    // --- 新規追加: 値上げ影響度アラート機能 ---
+    function detectAnomalies() {
+        const container = document.getElementById('anomaly_container');
+        const listEl = document.getElementById('anomaly_list');
+        const countEl = document.getElementById('anomaly_count');
+        const thresholdInput = document.getElementById('anomaly_threshold');
+        const threshold = parseFloat(thresholdInput.value) / 100;
+
+        if (!window.rawBillingData || window.rawBillingData.length === 0 || Object.keys(window.currentMasterRules).length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        // 新料金マトリックスの取得
+        let nBase = parseFloat(document.getElementById('n_base').value);
+        let limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value));
+        let prices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value));
+
+        // 新料金の計算関数
+        function getNewBill(usage) {
+            if (usage === 0) return nBase;
+            for (let i = 0; i < prices.length; i++) {
+                let maxU = i < limits.length ? limits[i] : Infinity;
+                let minU = i === 0 ? 0 : limits[i-1];
+                if (usage > minU && usage <= maxU) {
+                    return nBase + (usage * prices[i]);
+                }
+            }
+            return nBase;
+        }
+
+        // 現行料金の計算関数
+        function getCurBill(usage, tariffId) {
+            let plan = window.currentMasterRules[tariffId];
+            if (!plan || !plan.tiers) return 0;
+            let tiers = plan.tiers;
+            if (usage === 0) return tiers[0] ? tiers[0].base_fee : 0;
+            for (let t of tiers) {
+                let maxU = t.max_usage >= 99999 ? Infinity : t.max_usage;
+                if (usage > t.min_usage - 0.001 && usage <= maxU + 0.001) {
+                    return t.base_fee + (usage * t.unit_price);
+                }
+            }
+            return 0;
+        }
+
+        // メーター(料金番号)ごとの年間合計料金を計算
+        let meterImpacts = {};
+        window.rawBillingData.forEach(row => {
+            let meterId = row.plan_id; // CSVの料金番号
+            let tariffId = row.tariff_id;
+            let usage = parseFloat(row.usage_amount) || 0;
+
+            let curBill = getCurBill(usage, tariffId);
+            let newBill = getNewBill(usage);
+
+            if (!meterImpacts[meterId]) meterImpacts[meterId] = { cur: 0, new: 0 };
+            meterImpacts[meterId].cur += curBill;
+            meterImpacts[meterId].new += newBill;
+        });
+
+        // 閾値を超えるものを抽出
+        let anomalies = [];
+        for (let mId in meterImpacts) {
+            let cur = meterImpacts[mId].cur;
+            let n = meterImpacts[mId].new;
+            if (cur > 0) {
+                let rate = (n - cur) / cur;
+                if (rate >= threshold) {
+                    anomalies.push({ meterId: mId, rate: rate, cur: cur, new: n, diff: n - cur });
+                }
+            }
+        }
+
+        if (anomalies.length > 0) {
+            // 上昇率が高い順に並び替え
+            anomalies.sort((a, b) => b.rate - a.rate);
+
+            let html = '<table class="anomaly-table">';
+            html += '<tr><th>料金番号 (顧客メーターID)</th><th>値上げ上昇率</th><th>1年間の現行料金 (累計)</th><th>1年間の新料金 (累計)</th><th>年間負担増額</th></tr>';
+
+            anomalies.forEach(a => {
+                let rateStr = (a.rate * 100).toFixed(1) + '%';
+                html += `<tr>
+                    <td style="font-family:monospace; font-weight:bold; font-size:1rem;">${a.meterId}</td>
+                    <td><span class="badge-up">⬆️ ${rateStr} アップ</span></td>
+                    <td>¥${Math.round(a.cur).toLocaleString()}</td>
+                    <td><b>¥${Math.round(a.new).toLocaleString()}</b></td>
+                    <td style="color:var(--red); font-weight:bold;">+¥${Math.round(a.diff).toLocaleString()}</td>
+                </tr>`;
+            });
+            html += '</table>';
+
+            listEl.innerHTML = html;
+            countEl.innerText = `${anomalies.length}件の大幅値上げ顧客を検知`;
+            container.style.display = 'block';
+        } else {
+            listEl.innerHTML = '<p style="padding:1rem; color:var(--text-muted); font-weight:bold;">✅ 設定した基準を超える値上げになる料金番号はありません。安全なシミュレーション結果です。</p>';
+            countEl.innerText = '0件';
+            container.style.display = 'block';
         }
     }
 
@@ -497,14 +603,12 @@
         if (error) { alert("エラー: " + error.message); btn.innerText = "シミュレーション実行"; return; }
 
         let curTotal = 0, newTotal = 0;
-        
         let cTierMap = {}; let cTierSort = {}; let planTotalDist = {}; let nTierMap = {};
 
         data.forEach(d => {
             const cur = parseFloat(d.current_revenue);
             const prop = parseFloat(d.new_revenue);
             const cnt = parseInt(d.customer_count);
-            
             const c_tier = d.c_tier_name;
             const n_tier = d.n_tier_name;
             const p = d.plan_id;
@@ -610,6 +714,9 @@
                 }
             }
         });
+
+        // ✅ ここで異常検知ロジックを呼び出し
+        detectAnomalies();
 
         btn.innerText = "シミュレーション実行"; status.innerText = "✓ 完了";
     }
