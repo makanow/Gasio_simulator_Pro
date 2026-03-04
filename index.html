@@ -799,8 +799,8 @@
                 
                 // 現行計算
                 let curBill = 0;
-                let cTierName = "基本";
-                let cSortKey = 0;
+                let cTierName = "区画A"; // 0m³はデフォルトでA区画に分類
+                let cSortKey = 1;
                 let plan = window.currentMasterRules[tId];
                 if (plan && plan.tiers) {
                     if (usage === 0) {
@@ -811,7 +811,8 @@
                             let maxU = tier.max_usage >= 99999 ? Infinity : tier.max_usage;
                             if (usage > tier.min_usage - 0.001 && usage <= maxU + 0.001) {
                                 curBill = tier.base_fee + (usage * tier.unit_price);
-                                cTierName = `区画${i+1}`;
+                                // 0=A, 1=B, 2=C... とアルファベットに自動変換
+                                cTierName = `区画${String.fromCharCode(65 + i)}`; 
                                 cSortKey = i+1;
                                 break;
                             }
@@ -821,8 +822,8 @@
 
                 // 新料金計算
                 let newBill = nBase;
-                let nTierName = "基本";
-                let nSortKey = 0;
+                let nTierName = "区画A"; // 0m³はデフォルトでA区画に分類
+                let nSortKey = 1;
                 if (usage === 0) {
                     newBill = nBase;
                 } else {
@@ -831,13 +832,14 @@
                         let minU = i === 0 ? 0 : limits[i-1];
                         if (usage > minU && usage <= maxU) {
                             newBill = nBase + (usage * prices[i]);
-                            nTierName = `区画${i+1}`;
+                            // こちらもアルファベットに自動変換
+                            nTierName = `区画${String.fromCharCode(65 + i)}`; 
                             nSortKey = i+1;
                             break;
                         }
                     }
                 }
-
+                
                 curTotal += curBill;
                 newTotal += newBill;
 
