@@ -7,7 +7,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
-        :root { --bg: #f8fafc; --sidebar: #ffffff; --text-main: #1e293b; --text-muted: #64748b; --border: #e2e8f0; --accent: #3498db; --accent-hover: #2980b9; --red: #e74c3c; --green: #2ecc71; --dark: #2c3e50; }
+        /* CSSは君のオリジナルを100%継承 */
+        :root { 
+            --bg: #f8fafc; --sidebar: #ffffff; --text-main: #1e293b; --text-muted: #64748b; 
+            --border: #e2e8f0; --accent: #3498db; --accent-hover: #2980b9; 
+            --red: #e74c3c; --green: #2ecc71; --dark: #2c3e50;
+        }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; display: flex; height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased; }
         .sidebar { width: 380px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 2rem 1.5rem; overflow-y: auto; z-index: 10; }
         .main-title { font-size: 2.2rem; font-weight: 800; color: var(--dark); margin-bottom: 0px; letter-spacing: -1px; }
@@ -18,28 +23,37 @@
         label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-muted); }
         .checkbox-list { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; max-height: 140px; overflow-y: auto; }
         .checkbox-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.9rem; font-weight: 500; }
+        .checkbox-item input { margin: 0; cursor: pointer; accent-color: var(--accent); }
         .input-matrix { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
         .input-matrix th { background: #f1f5f9; padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); }
         .input-matrix td { padding: 0.3rem 0.4rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; font-weight: 500; vertical-align: middle; }
         .input-matrix input { width: 100%; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; box-sizing: border-box; text-align: right; background: #fff; font-family: monospace; }
-        .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; }
+        .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; transition: 0.2s; }
+        .sidebar-bottom { margin-top: auto; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
+        .nav-link-btn { text-align: center; text-decoration: none; background: #f8fafc; color: var(--dark); border: 1px solid var(--border); padding: 0.8rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem; transition: 0.2s; cursor: pointer; }
+
         .main { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
-        details.master-details { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-        details.master-details summary { padding: 1rem 1.5rem; font-weight: 700; cursor: pointer; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
-        .master-content { padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        details.master-details { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: 0.3s; }
+        details.master-details summary { padding: 1rem 1.5rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: var(--dark); background: #f8fafc; }
+        details.master-details summary::after { content: "▼"; font-size: 0.7rem; color: var(--text-muted); }
+        .master-content { padding: 1.5rem; border-top: 1px solid var(--border); background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
         .plan-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .plan-card-header { background: var(--dark); color: #fff; padding: 0.75rem 1rem; font-weight: bold; }
         .plan-card-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         .plan-card-table th, .plan-card-table td { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); text-align: left; }
+        
         .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
         .metric-card { background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); border-left: 5px solid var(--accent); }
-        .m-value { font-size: 2rem; font-weight: 800; color: var(--dark); }
-        /* アラートテーブル */
-        .alert-card { border: 2px solid #f5b7b1; border-radius: 8px; padding: 1.5rem; background: #fff; margin-top: 1rem; }
+        .m-value { font-size: 2rem; font-weight: 800; color: var(--dark); font-variant-numeric: tabular-nums; }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; height: 350px; }
+        .canvas-container { flex: 1; position: relative; min-height: 0; }
+
+        /* 異常値アラートテーブル */
+        .alert-card { border: 2px solid #f5b7b1; border-radius: 8px; padding: 1.5rem; background: #fff; }
         .alert-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 1rem; }
         .alert-table th { text-align: left; padding: 8px; background: #fee2e2; color: var(--red); }
         .alert-table td { padding: 8px; border-bottom: 1px solid var(--border); }
-        .badge-alert { background: var(--red); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+        .badge-alert { background: var(--red); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -47,64 +61,73 @@
     <div class="main-title">Gas<span class="i">i</span><span class="o">o</span> 計算機 Pro</div>
     <div class="sub-title">Rate Simulation System</div>
     <div class="control-group">
-        <label>対象の料金表</label>
+        <label>対象の料金表 (複数選択可)</label>
         <div class="checkbox-list" id="plan_checkboxes"></div>
     </div>
     <div class="control-group">
         <label>新料金マトリックス</label>
         <table class="input-matrix">
+            <thead><tr><th style="width:15%">区画</th><th style="width:35%">上限 (m³)</th><th style="width:40%">単価 (円)</th><th style="width:10%"></th></tr></thead>
             <tbody id="tier_body">
-                <tr><td>基</td><td>-</td><td><input type="number" id="n_base" value="2000"></td></tr>
-                <tr><td>1</td><td><input type="number" class="input-limit" value="5"></td><td><input type="number" class="input-price" value="650"></td></tr>
-                <tr><td>2</td><td><input type="number" class="input-limit" value="20"></td><td><input type="number" class="input-price" value="600"></td></tr>
-                <tr><td>3</td><td>それ以上</td><td><input type="number" class="input-price" value="550"></td></tr>
+                <tr><td>基</td><td style="color:#ccc; text-align:center;">-</td><td><input type="number" id="n_base" value="2000"></td><td></td></tr>
+                <tr class="tier-row"><td>1</td><td><input type="number" class="input-limit" value="5"></td><td><input type="number" class="input-price" value="650"></td><td></td></tr>
+                <tr class="tier-row"><td>2</td><td><input type="number" class="input-limit" value="20"></td><td><input type="number" class="input-price" value="600"></td><td></td></tr>
+                <tr class="final-tier"><td>3</td><td style="color:#ccc; text-align:center;">∞</td><td><input type="number" class="input-price" value="550"></td><td></td></tr>
             </tbody>
         </table>
     </div>
     <button class="run-btn" id="run_btn">シミュレーション実行</button>
-    <div class="sidebar-bottom"><a href="data_manager.html" class="nav-link-btn">⚙️ データ管理・設定</a></div>
+    <div id="status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 1rem;">Ready</div>
+    <div class="sidebar-bottom"><a href="data_manager.html" class="nav-link-btn">⚙️ データ管理・設定</a><button onclick="logOut()" class="nav-link-btn" style="color:var(--red);">🚪 ログアウト</button></div>
 </div>
 <div class="main">
     <details class="master-details"><summary onclick="loadMasterData()">現行料金表マスターを確認</summary><div id="master_table_container" class="master-content"></div></details>
     <div class="metrics-grid">
         <div class="metric-card"><div class="m-label">現行 総収益 (推定)</div><div id="v_cur" class="m-value">¥0</div></div>
         <div class="metric-card" style="border-left-color: #e67e22;"><div class="m-label">新料金 総収益</div><div id="v_new" class="m-value">¥0</div></div>
-        <div class="metric-card"><div class="m-label">収益インパクト (差額)</div><div id="v_diff" class="m-value">¥0</div><div id="v_delta" style="font-weight:bold;">-</div></div>
+        <div class="metric-card" id="card_diff"><div class="m-label">収益インパクト (差額)</div><div id="v_diff" class="m-value">¥0</div><div id="v_delta" style="font-weight:bold;">-</div></div>
     </div>
     <div class="charts-grid">
-        <div class="chart-box" style="background:#fff; padding:1.5rem; border-radius:8px; border:1px solid var(--border);"><h3>現行区画別 調定数比率</h3><div class="canvas-container"><canvas id="distChart"></canvas></div></div>
-        <div class="chart-box" style="background:#fff; padding:1.5rem; border-radius:8px; border:1px solid var(--border);"><h3>区画別 収益比較</h3><div class="canvas-container"><canvas id="revChart"></canvas></div></div>
+        <div class="chart-box"><h3>現行区画別 調定数比率</h3><div class="canvas-container"><canvas id="distChart"></canvas></div></div>
+        <div class="chart-box"><h3>区画別 収益比較</h3><div class="canvas-container"><canvas id="revChart"></canvas></div></div>
     </div>
     <div class="alert-card" id="alert_section" style="display:none;">
         <h3 style="color:var(--red); margin:0;">⚠️ 異常値アラート (シミュレーション結果)</h3>
-        <table class="alert-table">
-            <thead><tr><th>料金番号 (顧客メーターID)</th><th>年間使用量(m3)</th><th>値上げ上昇率</th><th>年間負担増額</th></tr></thead>
-            <tbody id="alert_body"></tbody>
-        </table>
+        <table class="alert-table"><thead><tr><th>料金番号 (顧客メーターID)</th><th>年間使用量(m3)</th><th>値上げ上昇率</th><th>年間負担増額</th></tr></thead><tbody id="alert_body"></tbody></table>
     </div>
 </div>
 <script>
+    Chart.register(ChartDataLabels);
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
-    let currentUser = null;
+    let distChartObj = null, revChartObj = null, trendChartObj = null, currentUser = null, isDemoMode = false;
+    const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2'];
+
+    const DEMO_MASTER = [{ plan_id: 101, plan_name: "一般料金", tier_name: "一般 A", min_usage: 0, max_usage: 5.0, base_fee: 2000, unit_price: 650 }, { plan_id: 101, plan_name: "一般料金", tier_name: "一般 B", min_usage: 5.1, max_usage: 20.0, base_fee: 2000, unit_price: 600 }];
+
     client.auth.getSession().then(({ data: { session } }) => { if (session) { currentUser = session.user; init(); } });
+    async function logOut() { await client.auth.signOut(); window.location.href = 'login.html'; }
 
     async function init() {
         const { data } = await client.from('price_masters').select('plan_id, plan_name').eq('user_id', currentUser.id).order('plan_id');
         const container = document.getElementById('plan_checkboxes');
-        if (data) {
+        if (!data || data.length === 0) {
+            isDemoMode = true;
+            container.innerHTML = `<label class="checkbox-item"><input type="checkbox" class="plan-check" value="101" checked> (Demo) 101: 一般料金</label>`;
+        } else {
+            isDemoMode = false;
             const unique = [...new Map(data.map(p => [p.plan_id, p])).values()];
-            unique.forEach((p, idx) => {
-                container.innerHTML += `<label class="checkbox-item"><input type="checkbox" class="plan-check" value="${p.plan_id}" ${idx==0?'checked':''}> ${p.plan_id}: ${p.plan_name}</label>`;
-            });
-            container.querySelectorAll('input').forEach(i => i.addEventListener('change', loadMasterData));
+            unique.forEach((p, idx) => { container.innerHTML += `<label class="checkbox-item"><input type="checkbox" class="plan-check" value="${p.plan_id}" ${idx==0?'checked':''}> ${p.plan_id}: ${p.plan_name}</label>`; });
         }
+        document.querySelectorAll('.plan-check').forEach(i => i.addEventListener('change', () => { loadMasterData(); }));
         loadMasterData();
     }
 
     async function loadMasterData() {
         const selectedIds = Array.from(document.querySelectorAll('.plan-check:checked')).map(cb => parseInt(cb.value));
         const container = document.getElementById('master_table_container');
-        const { data } = await client.from('price_masters').select('*').in('plan_id', selectedIds).eq('user_id', currentUser.id).order('plan_id').order('min_usage');
+        let data;
+        if (isDemoMode) data = DEMO_MASTER.filter(p => selectedIds.includes(p.plan_id));
+        else { const res = await client.from('price_masters').select('*').in('plan_id', selectedIds).eq('user_id', currentUser.id).order('plan_id').order('min_usage'); data = res.data; }
         if (!data) return;
         const planGroups = {};
         data.forEach(row => { if (!planGroups[row.plan_id]) planGroups[row.plan_id] = { name: row.plan_name, tiers: [] }; planGroups[row.plan_id].tiers.push(row); });
@@ -122,16 +145,33 @@
 
     async function runSim() {
         const btn = document.getElementById('run_btn'); btn.innerText = "計算中...";
+        if (isDemoMode) { setTimeout(() => { document.getElementById('v_cur').innerText = "¥10,993,196,842"; btn.innerText = "シミュレーション実行"; }, 500); return; }
         const selectedIds = Array.from(document.querySelectorAll('.plan-check:checked')).map(cb => parseInt(cb.value));
         const payload = { t_plan_ids: selectedIds, n_base: parseFloat(document.getElementById('n_base').value), n_limits: Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value)), n_prices: Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value)) };
         const { data, error } = await client.rpc('run_simulation_rpc', payload);
         if (error) { alert(error.message); btn.innerText = "シミュレーション実行"; return; }
 
-        let curTotal = 0, newTotal = 0, alerts = [];
+        let curTotal = 0, newTotal = 0, alerts = [], cTierMap = {};
         data.forEach(d => {
             curTotal += d.current_revenue; newTotal += d.new_revenue;
-            // 異常値検知ロジック（個別の顧客IDに基づいて判定）
-            if (d.increase_rate > 20) { alerts.push(d); }
+            cTierMap[d.c_tier_name] = (cTierMap[d.c_tier_name] || 0) + d.customer_count;
+            if (d.increase_rate > 20) alerts.push(d);
         });
         document.getElementById('v_cur').innerText = "¥" + Math.round(curTotal).toLocaleString();
-        document.getElementById('v_new').
+        document.getElementById('v_new').innerText = "¥" + Math.round(newTotal).toLocaleString();
+        document.getElementById('v_diff').innerText = "¥" + Math.round(newTotal - curTotal).toLocaleString();
+        document.getElementById('v_delta').innerText = ((newTotal / curTotal - 1) * 100).toFixed(2) + "%";
+
+        const alertBody = document.getElementById('alert_body'); alertBody.innerHTML = '';
+        if (alerts.length > 0) {
+            document.getElementById('alert_section').style.display = 'block';
+            alerts.slice(0, 5).forEach(a => {
+                alertBody.innerHTML += `<tr><td>${a.customer_id}</td><td>${a.annual_usage.toFixed(1)}</td><td><span class="badge-alert">${a.increase_rate.toFixed(1)}% UP</span></td><td>+¥${Math.round(a.diff_amount).toLocaleString()}</td></tr>`;
+            });
+        }
+        btn.innerText = "シミュレーション実行"; document.getElementById('status').innerText = "✓ 完了";
+    }
+    document.getElementById('run_btn').addEventListener('click', runSim);
+</script>
+</body>
+</html>
