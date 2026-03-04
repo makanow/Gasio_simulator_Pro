@@ -14,113 +14,67 @@
             --red: #e74c3c; --green: #2ecc71; --dark: #2c3e50;
         }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; display: flex; height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased; }
-        
         .sidebar { width: 380px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 2rem 1.5rem; overflow-y: auto; z-index: 10; }
         
+        /* ロゴ配色修正 */
         .main-title { font-size: 2.2rem; font-weight: 800; color: var(--dark); margin-bottom: 0px; letter-spacing: -1px; }
-        /* ロゴの個別カラー設定を追加 */
         .main-title span.i { color: var(--red); }
         .main-title span.o { color: var(--accent); }
-
         .sub-title { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; margin-bottom: 24px; border-bottom: 2px solid var(--accent); padding-bottom: 12px; font-weight: 600; }
         
         .control-group { margin-bottom: 1.5rem; }
         label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-muted); }
-        
         .checkbox-list { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; max-height: 140px; overflow-y: auto; }
         .checkbox-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.9rem; font-weight: 500; }
         .checkbox-item input { margin: 0; cursor: pointer; accent-color: var(--accent); }
-
         .input-matrix { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-        .input-matrix th { background: #f1f5f9; padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); }
-        .input-matrix td { padding: 0.3rem 0.4rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; font-weight: 500; vertical-align: middle; }
-        .input-matrix input { width: 100%; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; box-sizing: border-box; text-align: right; background: #fff; font-family: monospace; }
-        .input-matrix input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2); }
-        .input-limit { color: var(--accent); font-weight: bold; }
+        .input-matrix th { background: #f1f5f9; padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted); }
+        .input-matrix td { padding: 0.3rem 0.4rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        .input-matrix input { width: 100%; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; }
         
-        .del-btn { background: none; border: none; color: #cbd5e1; cursor: pointer; font-size: 1.2rem; padding: 0 0.3rem; transition: 0.2s; }
-        .del-btn:hover { color: var(--red); }
-        .add-tier-btn { background: none; border: 1px dashed var(--accent); color: var(--accent); padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: 0.2s; }
-        
-        .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; transition: 0.2s; }
-        .run-btn:hover { background: var(--accent-hover); }
-
+        .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; }
         .sidebar-bottom { margin-top: auto; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
-        .nav-link-btn { text-align: center; text-decoration: none; background: #f8fafc; color: var(--dark); border: 1px solid var(--border); padding: 0.8rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem; transition: 0.2s; cursor: pointer; }
-        .nav-link-btn:hover { background: #e2e8f0; }
+        .nav-link-btn { text-align: center; text-decoration: none; background: #f8fafc; color: var(--dark); border: 1px solid var(--border); padding: 0.8rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem; }
 
         .main { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
-        
-        details.master-details { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: 0.3s; }
-        details.master-details summary { padding: 1rem 1.5rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; color: var(--dark); background: #f8fafc; }
-        details.master-details summary::-webkit-details-marker { display: none; }
-        details.master-details summary::after { content: "▼"; font-size: 0.7rem; color: var(--text-muted); transition: transform 0.3s; }
-        details[open].master-details summary::after { transform: rotate(180deg); }
-        
-        .master-content { padding: 1.5rem; border-top: 1px solid var(--border); background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
-        .plan-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .plan-card-header { background: var(--dark); color: #fff; padding: 0.75rem 1rem; font-weight: bold; font-size: 0.9rem; }
+        details.master-details { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        details.master-details summary { padding: 1rem 1.5rem; font-weight: 700; cursor: pointer; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
+        .master-content { padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .plan-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .plan-card-header { background: var(--dark); color: #fff; padding: 0.75rem 1rem; font-weight: bold; }
         .plan-card-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         .plan-card-table th, .plan-card-table td { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); text-align: left; }
-        .plan-card-table th { color: var(--text-muted); font-weight: 600; background: #f1f5f9; width: 30%; }
-        .plan-card-table td.num { text-align: right; font-family: monospace; font-size: 0.9rem; }
+        .plan-card-table td.num { text-align: right; font-family: monospace; }
 
         .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-        .metric-card { background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); border-left: 5px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .m-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
-        .m-value { font-size: 2rem; font-weight: 800; margin: 0.5rem 0; color: var(--dark); font-variant-numeric: tabular-nums; }
-        .delta { font-size: 0.9rem; font-weight: 700; }
-        .delta.plus { color: var(--green); } .delta.minus { color: var(--red); }
-        
+        .metric-card { background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); border-left: 5px solid var(--accent); }
+        .m-value { font-size: 2rem; font-weight: 800; color: var(--dark); }
         .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; height: 350px; }
-        .trend-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; height: 350px; margin-top: 1.5rem; }
-        
-        .chart-box { background: #fff; border-radius: 8px; border: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .chart-box h3 { margin: 0; font-size: 1rem; color: var(--dark); }
         .canvas-container { flex: 1; position: relative; min-height: 0; }
-        
-        .toggle-container { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent); }
-        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <div class="main-title">Gas<span class="i">i</span><span class="o">o</span> 計算機Pro</div>
+    <div class="main-title">Gas<span class="i">i</span><span class="o">o</span> 計算機 Pro</div>
     <div class="sub-title">Rate Simulation System</div>
-
     <div class="control-group">
         <label>対象の料金表 (複数選択可)</label>
-        <div class="checkbox-list" id="plan_checkboxes">
-            <div style="color:gray; font-size:0.8rem;">読み込み中...</div>
-        </div>
+        <div class="checkbox-list" id="plan_checkboxes"></div>
     </div>
-    
     <div class="control-group">
         <label>新料金マトリックス</label>
         <table class="input-matrix" id="tier_table">
-            <thead>
-                <tr><th style="width:15%">区画</th><th style="width:35%">上限 (m³)</th><th style="width:40%">単価 (円)</th><th style="width:10%"></th></tr>
-            </thead>
             <tbody id="tier_body">
-                <tr><td style="text-align:center;">基</td><td style="text-align:center; color:#ccc;">-</td><td><input type="number" id="n_base" value="2000" step="10"></td><td></td></tr>
-                <tr class="tier-row"><td class="tier-label" style="text-align:center;">1</td><td><input type="number" class="input-limit" value="5" step="1"></td><td><input type="number" class="input-price" value="650" step="1"></td><td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td></tr>
-                <tr class="tier-row"><td class="tier-label" style="text-align:center;">2</td><td><input type="number" class="input-limit" value="20" step="1"></td><td><input type="number" class="input-price" value="600" step="1"></td><td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td></tr>
-                <tr class="final-tier"><td class="tier-label" style="text-align:center;">3</td><td style="text-align:center; color:#ccc; font-size:0.75rem;">それ以上</td><td><input type="number" class="input-price" value="550" step="1"></td><td></td></tr>
+                <tr><td>基</td><td>-</td><td><input type="number" id="n_base" value="2000"></td></tr>
+                <tr><td>1</td><td><input type="number" class="input-limit" value="5"></td><td><input type="number" class="input-price" value="650"></td></tr>
+                <tr><td>2</td><td><input type="number" class="input-limit" value="20"></td><td><input type="number" class="input-price" value="600"></td></tr>
+                <tr><td>3</td><td>それ以上</td><td><input type="number" class="input-price" value="550"></td></tr>
             </tbody>
         </table>
-        <button class="add-tier-btn" onclick="addTier()">+ 区画を追加</button>
     </div>
-    
     <button class="run-btn" id="run_btn">シミュレーション実行</button>
     <div id="status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 1rem;">Ready</div>
-
     <div class="sidebar-bottom">
         <a href="data_manager.html" class="nav-link-btn">⚙️ データ管理・設定</a>
         <button onclick="logOut()" class="nav-link-btn" style="color: var(--red); border-color: #f5b7b1;">🚪 ログアウト</button>
@@ -130,45 +84,27 @@
 <div class="main">
     <details class="master-details">
         <summary onclick="loadMasterData()">現行料金表マスターを確認</summary>
-        <div id="master_table_container" class="master-content">
-            <p style="color:var(--text-muted); font-size:0.85rem; margin:0; grid-column: 1 / -1;">左のメニューからプランを選択してください。</p>
-        </div>
+        <div id="master_table_container" class="master-content"></div>
     </details>
-
     <div class="metrics-grid">
         <div class="metric-card"><div class="m-label">現行 総収益 (推定)</div><div id="v_cur" class="m-value">¥0</div></div>
         <div class="metric-card" style="border-left-color: #e67e22;"><div class="m-label">新料金 総収益</div><div id="v_new" class="m-value">¥0</div></div>
-        <div class="metric-card" id="card_diff"><div class="m-label">収益インパクト (差額)</div><div id="v_diff" class="m-value">¥0</div><div id="v_delta" class="delta">-</div></div>
+        <div class="metric-card" id="card_diff"><div class="m-label">収益インパクト (差額)</div><div id="v_diff" class="m-value">¥0</div><div id="v_delta" style="font-weight:bold;">-</div></div>
     </div>
-
     <div class="charts-grid">
         <div class="chart-box"><h3>現行区画別 調定数比率</h3><div class="canvas-container"><canvas id="distChart"></canvas></div></div>
         <div class="chart-box"><h3>区画別 収益比較</h3><div class="canvas-container"><canvas id="revChart"></canvas></div></div>
     </div>
-
-    <div class="trend-grid">
-        <div class="chart-box">
-            <div class="chart-header"><h3>過去1年間の使用量推移 (料金表別)</h3><div class="toggle-container">折れ線<label class="switch"><input type="checkbox" id="trend_toggle" onchange="toggleTrendChart()"><span class="slider"></span></label>積み上げ棒</div></div>
-            <div class="canvas-container"><canvas id="trendChart"></canvas></div>
-            <div id="trend_status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; display: none;">データを読み込んでいます...</div>
-        </div>
+    <div class="trend-grid" style="height:350px; margin-top:1.5rem;">
+        <div class="chart-box" style="height:100%;"><h3>過去1年間の使用量推移</h3><div class="canvas-container"><canvas id="trendChart"></canvas></div></div>
     </div>
 </div>
 
 <script>
     Chart.register(ChartDataLabels);
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
-    let distChartObj = null, revChartObj = null, trendChartObj = null, currentUser = null, trendChartData = null, isDemoMode = false;
-    const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
-
-    // デモ用データの定義（区画名 A, B, C対応版）
-    const DEMO_MASTER = [
-        { plan_id: 101, plan_name: "一般料金", tier_name: "一般 A", min_usage: 0, max_usage: 5.0, base_fee: 2000, unit_price: 650 },
-        { plan_id: 101, plan_name: "一般料金", tier_name: "一般 B", min_usage: 5.1, max_usage: 20.0, base_fee: 2000, unit_price: 600 },
-        { plan_id: 101, plan_name: "一般料金", tier_name: "一般 C", min_usage: 20.1, max_usage: 99999, base_fee: 2000, unit_price: 550 },
-        { plan_id: 201, plan_name: "暖房用季節契約", tier_name: "暖房 A", min_usage: 0, max_usage: 10.0, base_fee: 2500, unit_price: 580 },
-        { plan_id: 201, plan_name: "暖房用季節契約", tier_name: "暖房 B", min_usage: 10.1, max_usage: 99999, base_fee: 2500, unit_price: 480 }
-    ];
+    let distChartObj = null, revChartObj = null, trendChartObj = null, currentUser = null, isDemoMode = false;
+    const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2'];
 
     client.auth.getSession().then(({ data: { session } }) => {
         if (!session) window.location.href = 'login.html';
@@ -177,54 +113,28 @@
     });
 
     async function logOut() { await client.auth.signOut(); window.location.href = 'login.html'; }
-    function updateTierLabels() { document.querySelectorAll('.tier-label').forEach((lbl, idx) => { lbl.innerText = idx + 1; }); }
-    function addTier() {
-        const tbody = document.getElementById('tier_body');
-        const newRow = document.createElement('tr');
-        newRow.className = 'tier-row';
-        newRow.innerHTML = `<td class="tier-label" style="text-align:center;"></td><td><input type="number" class="input-limit" value="30" step="1"></td><td><input type="number" class="input-price" value="500" step="1"></td><td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td>`;
-        tbody.insertBefore(newRow, tbody.querySelector('.final-tier'));
-        updateTierLabels();
-    }
-    function removeTier(btn) { btn.closest('tr').remove(); updateTierLabels(); }
 
     async function init() {
         const { data } = await client.from('price_masters').select('plan_id, plan_name').eq('user_id', currentUser.id).order('plan_id');
         const container = document.getElementById('plan_checkboxes');
-        container.innerHTML = '';
-        
         if (!data || data.length === 0) {
             isDemoMode = true;
-            document.getElementById('status').innerText = "Demo Mode Active";
-            [...new Map(DEMO_MASTER.map(p => [p.plan_id, p])).values()].forEach((p, idx) => {
-                const label = document.createElement('label'); label.className = 'checkbox-item';
-                const isChecked = idx === 0 ? 'checked' : '';
-                label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" ${isChecked}> (Demo) ${p.plan_id}: ${p.plan_name}`;
-                // デモ用イベントリスナー
-                label.querySelector('input').addEventListener('change', () => { loadMasterData(); loadTrendData(); });
-                container.appendChild(label);
-            });
+            container.innerHTML = '<label class="checkbox-item"><input type="checkbox" checked disabled> (Demo) 101: 一般料金</label>';
         } else {
             isDemoMode = false;
-            [...new Map(data.map(p => [p.plan_id, p])).values()].forEach((p, idx) => {
-                const label = document.createElement('label'); label.className = 'checkbox-item';
-                const isChecked = idx === 0 ? 'checked' : '';
-                label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" ${isChecked}> ${p.plan_id}: ${p.plan_name}`;
-                label.querySelector('input').addEventListener('change', () => { loadMasterData(); loadTrendData(); });
-                container.appendChild(label);
+            const unique = [...new Map(data.map(p => [p.plan_id, p])).values()];
+            unique.forEach((p, idx) => {
+                container.innerHTML += `<label class="checkbox-item"><input type="checkbox" class="plan-check" value="${p.plan_id}" ${idx==0?'checked':''} onchange="loadMasterData();loadTrendData();"> ${p.plan_id}: ${p.plan_name}</label>`;
             });
         }
-        loadMasterData(); loadTrendData(); 
+        loadMasterData(); loadTrendData();
     }
 
     async function loadMasterData() {
-        const checkboxes = document.querySelectorAll('.plan-check:checked');
-        const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        const selectedIds = Array.from(document.querySelectorAll('.plan-check:checked')).map(cb => parseInt(cb.value));
         const container = document.getElementById('master_table_container');
-        if (selectedIds.length === 0) { container.innerHTML = 'プランを選択してください。'; return; }
-
         let data;
-        if (isDemoMode) { data = DEMO_MASTER.filter(p => selectedIds.includes(p.plan_id)); }
+        if (isDemoMode) { data = [{ plan_id: 101, plan_name: "一般料金", tier_name: "一般 A", min_usage: 0, max_usage: 5.0, base_fee: 2000, unit_price: 650 }]; }
         else { const res = await client.from('price_masters').select('*').in('plan_id', selectedIds).eq('user_id', currentUser.id).order('plan_id').order('min_usage'); data = res.data; }
         if (!data) return;
 
@@ -233,12 +143,11 @@
 
         let html = '';
         for (const [pId, pData] of Object.entries(planGroups)) {
-            // マスター確認表のデザインと列の修正（区画名列を追加、基本料金重複排除）
             html += `<div class="plan-card"><div class="plan-card-header">${pId}: ${pData.name}</div><table class="plan-card-table"><thead><tr><th>区画名</th><th>適用範囲</th><th>基本料金</th><th>単価</th></tr></thead><tbody>`;
             pData.tiers.forEach((row, idx) => {
-                const range = `${row.min_usage.toFixed(1)}~${row.max_usage>=99999?'∞':row.max_usage.toFixed(1)}`;
-                const baseStr = (idx === 0) ? `¥${row.base_fee.toLocaleString()}` : '-';
-                html += `<tr><td>${row.tier_name || '-'}</td><td>${range}</td><td class="num">${baseStr}</td><td class="num">¥${row.unit_price.toLocaleString()}</td></tr>`;
+                const maxU = row.max_usage >= 99999 ? '∞' : row.max_usage.toFixed(1);
+                const base = idx === 0 ? `¥${row.base_fee.toLocaleString()}` : '-';
+                html += `<tr><td>${row.tier_name || '-'}</td><td>${row.min_usage.toFixed(1)}~${maxU}</td><td class="num">${base}</td><td class="num">¥${row.unit_price}</td></tr>`;
             });
             html += `</tbody></table></div>`;
         }
@@ -247,47 +156,42 @@
 
     async function loadTrendData() {
         const selectedIds = Array.from(document.querySelectorAll('.plan-check:checked')).map(cb => cb.value);
-        if (selectedIds.length === 0) { if (trendChartObj) trendChartObj.destroy(); return; }
-
-        if (isDemoMode) {
-            const demoMonths = ["202305", "202306", "202307", "202308", "202309", "202310", "202311", "202312", "202401", "202402", "202403", "202404"];
-            trendChartData = { labels: demoMonths.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6)), datasets: selectedIds.map((tId, idx) => ({ label: `Plan ${tId}`, data: demoMonths.map(() => Math.floor(Math.random() * 20000) + 10000), borderColor: PALETTE[idx % PALETTE.length], backgroundColor: PALETTE[idx % PALETTE.length] + '80', borderWidth: 2, tension: 0.1, fill: false })) };
-            renderTrendChart(); return;
-        }
-
-        const statusEl = document.getElementById('trend_status'); statusEl.style.display = 'block';
-        let allData = []; let start = 0; let fetchMore = true;
-        while(fetchMore) {
-            const { data, error } = await client.from('gas_data_v3').select('year_month, tariff_id, usage_amount').in('tariff_id', selectedIds).eq('user_id', currentUser.id).order('year_month', { ascending: true }).range(start, start + 999);
-            if (error || !data) break; allData = allData.concat(data); start += data.length; if (data.length < 1000) fetchMore = false;
-        }
-        statusEl.style.display = 'none';
-        const aggregated = {}; const monthsSet = new Set();
-        allData.forEach(row => { monthsSet.add(row.year_month); if (!aggregated[row.year_month]) aggregated[row.year_month] = {}; if (!aggregated[row.year_month][row.tariff_id]) aggregated[row.year_month][row.tariff_id] = 0; aggregated[row.year_month][row.tariff_id] += parseFloat(row.usage_amount); });
-        const labels = Array.from(monthsSet).sort();
-        trendChartData = { labels: labels.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6)), datasets: selectedIds.map((tId, idx) => ({ label: `プラン ${tId}`, data: labels.map(ym => aggregated[ym][tId] || 0), borderColor: PALETTE[idx % PALETTE.length], backgroundColor: PALETTE[idx % PALETTE.length] + '80', borderWidth: 2, tension: 0.1, fill: false })) };
-        renderTrendChart();
-    }
-
-    function renderTrendChart() {
-        const ctx = document.getElementById('trendChart').getContext('2d'); const isBar = document.getElementById('trend_toggle').checked;
+        if (selectedIds.length === 0) return;
+        const { data } = await client.from('gas_data_v3').select('year_month, tariff_id, usage_amount').in('tariff_id', selectedIds).eq('user_id', currentUser.id).order('year_month');
+        if (!data || data.length === 0) return;
+        const aggregated = {}; const months = new Set();
+        data.forEach(row => { months.add(row.year_month); if(!aggregated[row.year_month]) aggregated[row.year_month] = {}; aggregated[row.year_month][row.tariff_id] = (aggregated[row.year_month][row.tariff_id] || 0) + row.usage_amount; });
+        const labels = Array.from(months).sort();
         if (trendChartObj) trendChartObj.destroy();
-        trendChartObj = new Chart(ctx, { type: isBar ? 'bar' : 'line', data: { labels: trendChartData.labels, datasets: trendChartData.datasets.map(ds => ({...ds, type: isBar ? 'bar' : 'line', fill: isBar})) }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: isBar }, y: { stacked: isBar, beginAtZero: true } }, plugins: { datalabels: { display: false } } } });
+        trendChartObj = new Chart(document.getElementById('trendChart'), { type: 'line', data: { labels, datasets: selectedIds.map((id, i) => ({ label: `Plan ${id}`, data: labels.map(m => aggregated[m][id] || 0), borderColor: PALETTE[i%5], fill: false })) }, options: { responsive: true, maintainAspectRatio: false } });
     }
-    function toggleTrendChart() { if (trendChartData) renderTrendChart(); }
 
     async function runSim() {
         const btn = document.getElementById('run_btn'); btn.innerText = "計算中...";
-        if (isDemoMode) { setTimeout(() => { document.getElementById('v_cur').innerText = "¥10,993,196,842"; document.getElementById('v_new').innerText = "¥443,864,015"; document.getElementById('v_diff').innerText = "-¥10,549,332,827"; const deltaEl = document.getElementById('v_delta'); deltaEl.innerText = "▼ 95.96%"; deltaEl.className = "delta minus"; btn.innerText = "シミュレーション実行"; document.getElementById('status').innerText = "✓ 完了 (Demo)"; }, 500); return; }
         const selectedIds = Array.from(document.querySelectorAll('.plan-check:checked')).map(cb => parseInt(cb.value));
-        if (selectedIds.length === 0) { alert("プラン選択必須"); btn.innerText = "シミュレーション実行"; return; }
         const payload = { t_plan_ids: selectedIds, n_base: parseFloat(document.getElementById('n_base').value), n_limits: Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value)), n_prices: Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value)) };
         const { data, error } = await client.rpc('run_simulation_rpc', payload);
-        if (error) { alert("Error: " + error.message); btn.innerText = "シミュレーション実行"; return; }
-        let curTotal = 0, newTotal = 0; data.forEach(d => { curTotal += parseFloat(d.current_revenue); newTotal += parseFloat(d.new_revenue); });
-        const diff = newTotal - curTotal; const delta = curTotal > 0 ? (diff / curTotal) * 100 : 0;
-        document.getElementById('v_cur').innerText = "¥" + Math.round(curTotal).toLocaleString(); document.getElementById('v_new').innerText = "¥" + Math.round(newTotal).toLocaleString(); document.getElementById('v_diff').innerText = (diff >= 0 ? "+¥" : "¥") + Math.round(diff).toLocaleString();
-        const dEl = document.getElementById('v_delta'); dEl.innerText = (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta).toFixed(2) + "%"; dEl.className = "delta " + (delta >= 0 ? "plus" : "minus");
+        if (error) { alert(error.message); btn.innerText = "シミュレーション実行"; return; }
+
+        let curTotal = 0, newTotal = 0, cTierMap = {}, nTierMap = {};
+        data.forEach(d => {
+            curTotal += d.current_revenue; newTotal += d.new_revenue;
+            cTierMap[d.c_tier_name] = (cTierMap[d.c_tier_name] || 0) + d.customer_count;
+            if(!nTierMap[d.n_tier_name]) nTierMap[d.n_tier_name] = { cur: 0, new: 0 };
+            nTierMap[d.n_tier_name].cur += d.current_revenue; nTierMap[d.n_tier_name].new += d.new_revenue;
+        });
+
+        document.getElementById('v_cur').innerText = "¥" + Math.round(curTotal).toLocaleString();
+        document.getElementById('v_new').innerText = "¥" + Math.round(newTotal).toLocaleString();
+        const diff = newTotal - curTotal; document.getElementById('v_diff').innerText = "¥" + Math.round(diff).toLocaleString();
+        const delta = ((newTotal / curTotal) - 1) * 100; document.getElementById('v_delta').innerText = delta.toFixed(2) + "%";
+
+        if (distChartObj) distChartObj.destroy();
+        distChartObj = new Chart(document.getElementById('distChart'), { type: 'doughnut', data: { labels: Object.keys(cTierMap), datasets: [{ data: Object.values(cTierMap), backgroundColor: PALETTE }] }, options: { responsive: true, maintainAspectRatio: false } });
+
+        if (revChartObj) revChartObj.destroy();
+        revChartObj = new Chart(document.getElementById('revChart'), { type: 'bar', data: { labels: Object.keys(nTierMap), datasets: [{ label: '現行', data: Object.keys(nTierMap).map(k => nTierMap[k].cur), backgroundColor: '#95a5a6' }, { label: '新料金', data: Object.keys(nTierMap).map(k => nTierMap[k].new), backgroundColor: '#e67e22' }] }, options: { responsive: true, maintainAspectRatio: false } });
+
         btn.innerText = "シミュレーション実行"; document.getElementById('status').innerText = "✓ 完了";
     }
     document.getElementById('run_btn').addEventListener('click', runSim);
