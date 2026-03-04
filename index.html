@@ -42,7 +42,7 @@
         .run-btn:hover { background: var(--accent-hover); }
 
         .sidebar-bottom { margin-top: auto; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
-        .nav-link-btn { text-align: center; text-decoration: none; background: #f8fafc; color: var(--dark); border: 1px solid var(--border); padding: 0.8rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem; transition: 0.2s; cursor: pointer; }
+        .nav-link-btn { width: 100%; text-align: center; text-decoration: none; background: #f8fafc; color: var(--dark); border: 1px solid var(--border); padding: 0.8rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem; transition: 0.2s; cursor: pointer; box-sizing: border-box; }
         .nav-link-btn:hover { background: #e2e8f0; }
 
         .main { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
@@ -68,9 +68,7 @@
         .delta { font-size: 0.9rem; font-weight: 700; }
         .delta.plus { color: var(--green); } .delta.minus { color: var(--red); }
         
-        /* グラフエリアの調整 */
         .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; height: 350px; }
-        /* トレンドグラフは1行まるごと使う */
         .trend-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; height: 350px; margin-top: 1.5rem; }
         
         .chart-box { background: #fff; border-radius: 8px; border: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -78,7 +76,6 @@
         .chart-box h3 { margin: 0; font-size: 1rem; color: var(--dark); }
         .canvas-container { flex: 1; position: relative; min-height: 0; }
         
-        /* トグルスイッチのスタイル */
         .toggle-container { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -141,7 +138,7 @@
     <div id="status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 1rem;">Ready</div>
 
     <div class="sidebar-bottom">
-        <a href="data_manager.html" class="nav-link-btn">⚙️ データ管理・設定</a>
+        <button onclick="location.href='data_manager.html'" class="nav-link-btn">⚙️ データ管理・設定</button>
         <button onclick="logOut()" class="nav-link-btn" style="color: var(--red); border-color: #f5b7b1;">🚪 ログアウト</button>
     </div>
 </div>
@@ -316,7 +313,6 @@
         container.innerHTML = html;
     }
 
-    // --- トレンドデータの取得と描画 (全件取得ループ版) ---
     async function loadTrendData() {
         const checkboxes = document.querySelectorAll('.plan-check:checked');
         const selectedIds = Array.from(checkboxes).map(cb => cb.value); 
@@ -497,7 +493,6 @@
         if (error) { alert("エラー: " + error.message); btn.innerText = "シミュレーション実行"; return; }
 
         let curTotal = 0, newTotal = 0;
-        
         let cTierMap = {}; let cTierSort = {}; let planTotalDist = {}; let nTierMap = {};
 
         data.forEach(d => {
