@@ -73,7 +73,6 @@
 </div>
 
 <script>
-    // ※SupabaseのURLとKEYは、ご自身の環境のものに書き換えてください
     const SUPABASE_URL = "https://etbsbcbzzxkbkasixmdb.supabase.co"; 
     const SUPABASE_KEY = "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI"; 
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -87,7 +86,6 @@
         el.scrollTop = el.scrollHeight;
     }
 
-    // 数値クレンジング（カンマなどを除去して数値化）
     function cleanNum(val) {
         if (val === undefined || val === null) return 0;
         const s = val.toString().replace(/,/g, '').trim();
@@ -95,7 +93,6 @@
         return isNaN(n) ? 0 : n;
     }
 
-    // 日付形式を YYYYMM に統一
     function standardizeYearMonth(val) {
         if (!val) return null;
         let s = val.toString().trim().replace(/["']/g, "");
@@ -112,18 +109,18 @@
         return null;
     }
 
-    // ダミー関数（エラー回避用）
     function updateCounts() { log("データ件数を更新しました。"); }
     function loadEditableMaster() { log("マスターデータをリロードしました。"); }
 
     async function checkAuth() {
         const { data: { user } } = await client.auth.getUser();
+        // ★修正箇所: auth.html から login.html に変更
         if (!user) { location.href = 'login.html'; return; }
         currentUser = user;
         log(`ログイン中: ${user.email}`);
     }
 
-    // --- 料金表マスターアップロード（完全日本語・順番対応版） ---
+    // --- 料金表マスターアップロード ---
     async function uploadMaster() {
         const file = document.getElementById('file_master').files[0];
         const statusEl = document.getElementById('status_master');
@@ -141,7 +138,6 @@
                 complete: async function(results) {
                     let rawData = results.data;
                     
-                    // 1行目がヘッダー（数字以外）の場合は自動でスキップ
                     if (rawData.length > 0 && isNaN(parseInt(rawData[0][0]))) {
                         rawData.shift(); 
                         log("ヘッダー行を検出したためスキップしました。");
