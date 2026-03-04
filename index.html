@@ -16,10 +16,11 @@
         
         .sidebar { width: 380px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 2rem 1.5rem; overflow-y: auto; z-index: 10; }
         
-        /* ロゴのスタイル修正 */
+        /* ロゴ配色修正 */
         .main-title { font-size: 2.2rem; font-weight: 800; color: var(--dark); margin-bottom: 0px; letter-spacing: -1px; }
         .main-title span.i { color: var(--red); }
         .main-title span.o { color: var(--accent); }
+        
         .sub-title { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; margin-bottom: 24px; border-bottom: 2px solid var(--accent); padding-bottom: 12px; font-weight: 600; }
         
         .control-group { margin-bottom: 1.5rem; }
@@ -251,7 +252,6 @@
     }
 
     async function init() {
-        // eq('user_id', currentUser.id) を追加して確実に自分のデータを取得
         const { data } = await client.from('price_masters').select('plan_id, plan_name').eq('user_id', currentUser.id).order('plan_id');
         const container = document.getElementById('plan_checkboxes');
         container.innerHTML = '';
@@ -287,7 +287,6 @@
             return;
         }
 
-        // eq('user_id', currentUser.id) を追加
         const { data } = await client.from('price_masters').select('*').in('plan_id', selectedIds).eq('user_id', currentUser.id).order('plan_id').order('min_usage');
         if (!data) return;
 
