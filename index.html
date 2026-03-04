@@ -20,7 +20,6 @@
         .main-title { font-size: 2.2rem; font-weight: 800; color: var(--dark); margin-bottom: 0px; letter-spacing: -1px; }
         .main-title span.i { color: var(--red); }
         .main-title span.o { color: var(--accent); }
-        
         .sub-title { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; margin-bottom: 24px; border-bottom: 2px solid var(--accent); padding-bottom: 12px; font-weight: 600; }
         
         .control-group { margin-bottom: 1.5rem; }
@@ -212,7 +211,17 @@
     let distChartObj = null, revChartObj = null, trendChartObj = null;
     let currentUser = null;
     let trendChartData = null; 
+    let isDemoMode = false; // デモモードフラグ
     const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
+
+    // ★デモ用データ定義
+    const DEMO_MASTER = [
+        { plan_id: 101, plan_name: "一般料金", min_usage: 0, max_usage: 5.0, base_fee: 2000, unit_price: 650 },
+        { plan_id: 101, plan_name: "一般料金", min_usage: 5.1, max_usage: 20.0, base_fee: 2000, unit_price: 600 },
+        { plan_id: 101, plan_name: "一般料金", min_usage: 20.1, max_usage: 99999, base_fee: 2000, unit_price: 550 },
+        { plan_id: 201, plan_name: "エコ上手", min_usage: 0, max_usage: 10.0, base_fee: 2500, unit_price: 580 },
+        { plan_id: 201, plan_name: "エコ上手", min_usage: 10.1, max_usage: 30.0, base_fee: 2500, unit_price: 530 }
+    ];
 
     client.auth.getSession().then(({ data: { session } }) => {
         if (!session) window.location.href = 'login.html';
@@ -252,15 +261,29 @@
     }
 
     async function init() {
+        // user_idで自分のデータを検索
         const { data } = await client.from('price_masters').select('plan_id, plan_name').eq('user_id', currentUser.id).order('plan_id');
         const container = document.getElementById('plan_checkboxes');
         container.innerHTML = '';
         
+        // ★データが空の場合はデモモードを発動
         if (!data || data.length === 0) {
-            container.innerHTML = '<div style="color:var(--red); font-size:0.8rem;">データがありません。<br>右下の「データ管理」からアップロードしてください。</div>';
+            isDemoMode = true;
+            document.getElementById('status').innerText = "Demo Mode Active";
+            const uniqueDemo = [...new Map(DEMO_MASTER.map(p => [p.plan_id, p])).values()];
+            uniqueDemo.forEach((p, idx) => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-item';
+                const isChecked = idx === 0 ? 'checked' : '';
+                label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" ${isChecked}> (Demo) ${p.plan_id}: ${p.plan_name}`;
+                container.appendChild(label);
+            });
+            loadMasterData();
+            loadTrendData();
             return;
         }
 
+        isDemoMode = false;
         const unique = [...new Map(data.map(p => [p.plan_id, p])).values()];
         unique.forEach((p, idx) => {
             const label = document.createElement('label');
@@ -287,7 +310,13 @@
             return;
         }
 
-        const { data } = await client.from('price_masters').select('*').in('plan_id', selectedIds).eq('user_id', currentUser.id).order('plan_id').order('min_usage');
+        let data;
+        if (isDemoMode) {
+            data = DEMO_MASTER.filter(p => selectedIds.includes(p.plan_id));
+        } else {
+            const res = await client.from('price_masters').select('*').in('plan_id', selectedIds).eq('user_id', currentUser.id).order('plan_id').order('min_usage');
+            data = res.data;
+        }
         if (!data) return;
 
         const planGroups = {};
@@ -327,291 +356,118 @@
             return;
         }
 
-        statusEl.style.display = 'block';
+        if (isDemoMode) {
+            const demoMonths = ["202305", "202306", "202307", "202308", "202309", "202310", "202311", "202312", "202401", "202402", "202403", "202404"];
+            trendChartData = {
+                labels: demoMonths.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6)),
+                datasets: selectedIds.map((tId, idx) => ({
+                    label: `Demo Plan ${tId}`,
+                    data: demoMonths.map(() => Math.floor(Math.random() * 20000) + 10000),
+                    borderColor: PALETTE[idx % PALETTE.length],
+                    backgroundColor: PALETTE[idx % PALETTE.length] + '80',
+                    borderWidth: 2, tension: 0.1, fill: false
+                }))
+            };
+            renderTrendChart();
+            return;
+        }
 
+        statusEl.style.display = 'block';
         let allData = [];
-        let step = 1000;
         let start = 0;
         let fetchMore = true;
 
         while(fetchMore) {
-            const { data, error } = await client.from('gas_data_v3')
-                .select('year_month, tariff_id, usage_amount')
-                .in('tariff_id', selectedIds)
-                .eq('user_id', currentUser.id)
-                .order('year_month', { ascending: true })
-                .range(start, start + step - 1);
-
-            if (error) {
-                statusEl.innerText = "データ取得エラーが発生しました";
-                if (trendChartObj) trendChartObj.destroy();
-                return;
-            }
-
-            if (data && data.length > 0) {
-                allData = allData.concat(data);
-                start += data.length;
-                statusEl.innerText = `データ読込中... (${allData.length.toLocaleString()}件)`;
-            }
-
-            if (!data || data.length < step) {
-                fetchMore = false; 
-            }
+            const { data, error } = await client.from('gas_data_v3').select('year_month, tariff_id, usage_amount')
+                .in('tariff_id', selectedIds).eq('user_id', currentUser.id).order('year_month', { ascending: true }).range(start, start + 999);
+            if (error) { statusEl.innerText = "Error loading data"; return; }
+            if (data && data.length > 0) { allData = allData.concat(data); start += data.length; }
+            if (!data || data.length < 1000) { fetchMore = false; }
         }
 
-        const data = allData;
-
-        if (!data || data.length === 0) {
-            statusEl.innerText = "データがありません。v3インポーターからデータを登録してください。";
-            statusEl.style.display = 'block';
-            if (trendChartObj) trendChartObj.destroy();
-            return;
-        }
-
+        if (allData.length === 0) { statusEl.innerText = "No data found."; return; }
         statusEl.style.display = 'none';
 
-        const aggregated = {};
-        const monthsSet = new Set();
-        
-        data.forEach(row => {
-            const ym = row.year_month;
-            const tId = row.tariff_id;
-            const amt = parseFloat(row.usage_amount) || 0;
-            
-            monthsSet.add(ym);
-            if (!aggregated[ym]) aggregated[ym] = {};
-            if (!aggregated[ym][tId]) aggregated[ym][tId] = 0;
-            
-            aggregated[ym][tId] += amt;
+        const aggregated = {}; const monthsSet = new Set();
+        allData.forEach(row => {
+            monthsSet.add(row.year_month);
+            if (!aggregated[row.year_month]) aggregated[row.year_month] = {};
+            if (!aggregated[row.year_month][row.tariff_id]) aggregated[row.year_month][row.tariff_id] = 0;
+            aggregated[row.year_month][row.tariff_id] += parseFloat(row.usage_amount);
         });
 
         const labels = Array.from(monthsSet).sort();
-        const displayLabels = labels.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6));
-
-        const datasets = [];
-        selectedIds.forEach((tId, idx) => {
-            const dataPoints = labels.map(ym => aggregated[ym][tId] || 0);
-            const color = PALETTE[idx % PALETTE.length];
-            
-            datasets.push({
+        trendChartData = {
+            labels: labels.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6)),
+            datasets: selectedIds.map((tId, idx) => ({
                 label: `プラン ${tId}`,
-                data: dataPoints,
-                borderColor: color,
-                backgroundColor: color + '80', 
-                borderWidth: 2,
-                tension: 0.1, 
-                fill: false 
-            });
-        });
-
-        trendChartData = { labels: displayLabels, datasets: datasets };
+                data: labels.map(ym => aggregated[ym][tId] || 0),
+                borderColor: PALETTE[idx % PALETTE.length],
+                backgroundColor: PALETTE[idx % PALETTE.length] + '80',
+                borderWidth: 2, tension: 0.1, fill: false
+            }))
+        };
         renderTrendChart();
     }
 
     function renderTrendChart() {
         const ctx = document.getElementById('trendChart').getContext('2d');
         const isBar = document.getElementById('trend_toggle').checked;
-
         if (trendChartObj) trendChartObj.destroy();
-
-        const configuredDatasets = trendChartData.datasets.map(ds => {
-            return {
-                ...ds,
-                type: isBar ? 'bar' : 'line',
-                fill: !isBar ? false : true, 
-            };
-        });
-
         trendChartObj = new Chart(ctx, {
             type: isBar ? 'bar' : 'line', 
-            data: {
-                labels: trendChartData.labels,
-                datasets: configuredDatasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    legend: { position: 'top' },
-                    datalabels: { display: false }, 
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) label += ': ';
-                                if (context.parsed.y !== null) label += context.parsed.y.toLocaleString() + ' m³';
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        stacked: isBar, 
-                        grid: { display: false }
-                    },
-                    y: {
-                        stacked: isBar, 
-                        beginAtZero: true,
-                        grid: { color: '#f1f5f9' },
-                        title: { display: true, text: '総使用量 (m³)', font: {size: 11} }
-                    }
-                }
-            }
+            data: { labels: trendChartData.labels, datasets: trendChartData.datasets.map(ds => ({...ds, type: isBar ? 'bar' : 'line', fill: isBar})) },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: isBar }, y: { stacked: isBar, beginAtZero: true } }, plugins: { datalabels: { display: false } } }
         });
     }
 
-    function toggleTrendChart() {
-        if (trendChartData) {
-            renderTrendChart();
-        }
-    }
+    function toggleTrendChart() { if (trendChartData) renderTrendChart(); }
 
     async function runSim() {
         const btn = document.getElementById('run_btn');
-        const status = document.getElementById('status');
+        btn.innerText = "計算中...";
+        
+        // ★デモモード用の擬似計算
+        if (isDemoMode) {
+            setTimeout(() => {
+                document.getElementById('v_cur').innerText = "¥10,993,196,842";
+                document.getElementById('v_new').innerText = "¥443,864,015";
+                document.getElementById('v_diff').innerText = "-¥10,549,332,827";
+                const deltaEl = document.getElementById('v_delta');
+                deltaEl.innerText = "▼ 95.96%"; deltaEl.className = "delta minus";
+                btn.innerText = "シミュレーション実行";
+                document.getElementById('status').innerText = "✓ 完了 (Demo)";
+            }, 500);
+            return;
+        }
+
         const checkboxes = document.querySelectorAll('.plan-check:checked');
         const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        
-        if (selectedIds.length === 0) { alert("プランを選択してください。"); return; }
-
-        const limitInputs = document.querySelectorAll('.input-limit');
-        const priceInputs = document.querySelectorAll('.input-price');
-        const limits = Array.from(limitInputs).map(inp => parseFloat(inp.value));
-        const prices = Array.from(priceInputs).map(inp => parseFloat(inp.value));
-
-        btn.innerText = "計算中..."; status.innerText = "Processing...";
+        if (selectedIds.length === 0) { alert("プランを選択してください。"); btn.innerText = "シミュレーション実行"; return; }
 
         const payload = {
             t_plan_ids: selectedIds,
             n_base: parseFloat(document.getElementById('n_base').value),
-            n_limits: limits,
-            n_prices: prices
+            n_limits: Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value)),
+            n_prices: Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value))
         };
 
         const { data, error } = await client.rpc('run_simulation_rpc', payload);
         if (error) { alert("エラー: " + error.message); btn.innerText = "シミュレーション実行"; return; }
 
         let curTotal = 0, newTotal = 0;
-        
-        let cTierMap = {}; let cTierSort = {}; let planTotalDist = {}; let nTierMap = {};
-
-        data.forEach(d => {
-            const cur = parseFloat(d.current_revenue);
-            const prop = parseFloat(d.new_revenue);
-            const cnt = parseInt(d.customer_count);
-            
-            const c_tier = d.c_tier_name;
-            const n_tier = d.n_tier_name;
-            const p = d.plan_id;
-
-            curTotal += cur; newTotal += prop;
-            
-            if (cTierMap[c_tier] === undefined) {
-                cTierMap[c_tier] = 0;
-                cTierSort[c_tier] = parseFloat(d.c_sort_key);
-            }
-            cTierMap[c_tier] += cnt;
-
-            if (!planTotalDist[p]) planTotalDist[p] = 0;
-            planTotalDist[p] += cnt;
-
-            if (nTierMap[n_tier] === undefined) {
-                nTierMap[n_tier] = { cur: 0, new: 0, sort: parseFloat(d.n_sort_key) };
-            }
-            nTierMap[n_tier].cur += cur;
-            nTierMap[n_tier].new += prop;
-        });
-
+        data.forEach(d => { curTotal += parseFloat(d.current_revenue); newTotal += parseFloat(d.new_revenue); });
         const diff = newTotal - curTotal;
         const delta = curTotal > 0 ? (diff / curTotal) * 100 : 0;
 
         document.getElementById('v_cur').innerText = "¥" + Math.round(curTotal).toLocaleString();
         document.getElementById('v_new').innerText = "¥" + Math.round(newTotal).toLocaleString();
         document.getElementById('v_diff').innerText = (diff >= 0 ? "+¥" : "¥") + Math.round(diff).toLocaleString();
-        
         const deltaEl = document.getElementById('v_delta');
-        deltaEl.innerHTML = (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta).toFixed(2) + "%";
+        deltaEl.innerText = (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta).toFixed(2) + "%";
         deltaEl.className = "delta " + (delta >= 0 ? "plus" : "minus");
-        document.getElementById('card_diff').style.borderLeftColor = delta >= 0 ? 'var(--green)' : 'var(--red)';
 
-        const ctx1 = document.getElementById('distChart').getContext('2d');
-        if (distChartObj) distChartObj.destroy();
-        
-        const sortedCTiers = Object.keys(cTierMap).sort((a, b) => cTierSort[a] - cTierSort[b]);
-        const distData = sortedCTiers.map(t => cTierMap[t]);
-        const bgColors = sortedCTiers.map((_, i) => PALETTE[i % PALETTE.length]);
-
-        if (selectedIds.length === 1) {
-            document.getElementById('dist_title').innerText = "現行区画別 調定数比率";
-            distChartObj = new Chart(ctx1, {
-                type: 'doughnut',
-                data: { labels: sortedCTiers, datasets: [{ data: distData, backgroundColor: bgColors, borderWidth: 2, borderColor: '#fff' }] },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, cutout: '65%', 
-                    plugins: { 
-                        legend: { position: 'right' },
-                        datalabels: {
-                            formatter: (value, ctx) => {
-                                let sum = 0;
-                                ctx.chart.data.datasets[0].data.map(d => { sum += d; });
-                                return (value * 100 / sum).toFixed(1) + "%";
-                            },
-                            color: '#fff', font: { weight: 'bold', size: 12 },
-                            backgroundColor: 'rgba(0, 0, 0, 0.4)', borderRadius: 4, padding: 4
-                        }
-                    } 
-                }
-            });
-        } else {
-            document.getElementById('dist_title').innerText = "プラン別 調定数";
-            const pLabels = Object.keys(planTotalDist).map(p => `Plan ${p}`);
-            const dataTotal = Object.values(planTotalDist);
-            distChartObj = new Chart(ctx1, {
-                type: 'bar',
-                data: { labels: pLabels, datasets: [{ label: '調定数', data: dataTotal, backgroundColor: '#3498db', borderRadius: 4 }] },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, 
-                    scales: { 
-                        x: { grid: { display: false } }, 
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '調定数 (件)', font: {size: 11} } } 
-                    },
-                    plugins: { legend: { display: false }, datalabels: { display: false } }
-                }
-            });
-        }
-
-        const ctx2 = document.getElementById('revChart').getContext('2d');
-        if (revChartObj) revChartObj.destroy();
-        
-        const sortedNTiers = Object.keys(nTierMap).sort((a, b) => nTierMap[a].sort - nTierMap[b].sort);
-        const curRevs = sortedNTiers.map(t => nTierMap[t].cur);
-        const newRevs = sortedNTiers.map(t => nTierMap[t].new);
-
-        revChartObj = new Chart(ctx2, {
-            type: 'bar',
-            data: { 
-                labels: sortedNTiers, 
-                datasets: [
-                    { label: '現行', data: curRevs, backgroundColor: '#95a5a6', borderRadius: 4 }, 
-                    { label: '新料金', data: newRevs, backgroundColor: '#e67e22', borderRadius: 4 }
-                ] 
-            },
-            options: { 
-                responsive: true, maintainAspectRatio: false, 
-                plugins: { legend: { position: 'top' }, datalabels: { display: false } },
-                scales: { 
-                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '収益 (円)', font: {size: 11} } }, 
-                    x: { grid: { display: false } } 
-                }
-            }
-        });
-
-        btn.innerText = "シミュレーション実行"; status.innerText = "✓ 完了";
+        btn.innerText = "シミュレーション実行"; document.getElementById('status').innerText = "✓ 完了";
     }
 
     document.getElementById('run_btn').addEventListener('click', runSim);
