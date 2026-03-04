@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>Gasio 計算機Pro - データ管理 (v3対応版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js\"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js\"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
     <style>
         :root { --bg: #f8fafc; --text-main: #1e293b; --border: #e2e8f0; --accent: #3498db; --red: #e74c3c; --dark: #2c3e50; --green: #2ecc71; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
@@ -184,7 +184,7 @@
         if (allData.length > 0) { triggerDownload(Papa.unparse(allData), "gasio_billing_data.csv"); statusEl.innerText = `✓ バックアップ完了`; statusEl.className = 'status success'; }
     }
 
-    // 修正: Shift-JIS対応と数値クレンジングを追加
+    // 修正: Shift-JIS対応と数値クレンジングを追加、日本語ヘッダー対応
     async function uploadMaster() {
         const file = document.getElementById('file_master').files[0];
         const statusEl = document.getElementById('status_master');
@@ -197,17 +197,25 @@
             const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
 
             Papa.parse(unicodeString, {
-                header: true, skipEmptyLines: true,
+                header: false, skipEmptyLines: true,
                 complete: async function(results) {
-                    const insertData = results.data.map(row => ({
+                    let rawData = results.data;
+                    
+                    // 1行目がヘッダー（数字以外）の場合は自動でスキップする
+                    if (rawData.length > 0 && isNaN(parseInt(rawData[0][0]))) {
+                        rawData.shift(); 
+                    }
+                    
+                    const insertData = rawData.map(row => ({
                         user_id: currentUser.id, 
-                        plan_id: parseInt(cleanNum(row.plan_id)), 
-                        plan_name: row.plan_name, 
-                        min_usage: cleanNum(row.min_usage), 
-                        max_usage: cleanNum(row.max_usage), 
-                        base_fee: cleanNum(row.base_fee), 
-                        unit_price: cleanNum(row.unit_price)
-                    }));
+                        plan_id: parseInt(cleanNum(row[0])), 
+                        plan_name: String(row[1] || "").trim(), 
+                        min_usage: cleanNum(row[2]), 
+                        max_usage: cleanNum(row[3]), 
+                        base_fee: cleanNum(row[4]), 
+                        unit_price: cleanNum(row[5])
+                    })).filter(d => !isNaN(d.plan_id));
+
                     const { error } = await client.from('price_masters').insert(insertData);
                     if (error) {
                         statusEl.innerText = 'エラー: ' + error.message;
