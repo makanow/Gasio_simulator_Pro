@@ -51,7 +51,7 @@
 <div class="card">
     <div class="section-title">料金表マスター インポート</div>
     <div class="upload-area">
-        <input type="file" id="file_master" accept=".csv" style="display:none" onchange="uploadMaster()">
+        <input type="file" id="file_master" accept=".csv" style="display:none" onclick="this.value=null" onchange="uploadMaster()">
         <button class="btn btn-primary" onclick="document.getElementById('file_master').click()">マスターCSVを選択</button>
         <div id="status_master" class="status"></div>
     </div>
@@ -61,7 +61,7 @@
 <div class="card">
     <div class="section-title">1年分請求データ一括インポート (v3)</div>
     <div class="upload-area">
-        <input type="file" id="billingCsv" accept=".csv" style="display:none" onchange="handleBillingUpload(this)">
+        <input type="file" id="billingCsv" accept=".csv" style="display:none" onclick="this.value=null" onchange="handleBillingUpload(this)">
         <button class="btn btn-primary" onclick="document.getElementById('billingCsv').click()">請求データCSVを選択</button>
         <div id="billingStatus" class="status"></div>
     </div>
