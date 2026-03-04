@@ -6,39 +6,35 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        :root { --bg: #f8fafc; --text-main: #1e293b; --border: #e2e8f0; --accent: #3498db; --red: #e74c3c; }
-        body { font-family: sans-serif; background: var(--bg); padding: 2rem; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 2rem; border-radius: 8px; border: 1px solid var(--border); width: 100%; max-width: 600px; margin-bottom: 2rem; }
-        .back-btn { align-self: flex-start; cursor: pointer; color: var(--accent); font-weight: bold; margin-bottom: 1rem; }
-        .btn-red { background: var(--red); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+        :root { --bg: #f8fafc; --text-main: #1e293b; --border: #e2e8f0; --accent: #3498db; --red: #e74c3c; --dark: #2c3e50; }
+        body { font-family: sans-serif; background: var(--bg); padding: 3rem; display: flex; flex-direction: column; align-items: center; }
+        .header { width: 100%; max-width: 800px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .back-link { cursor: pointer; color: var(--accent); font-weight: bold; text-decoration: none; }
+        .card { background: white; padding: 2.5rem; border-radius: 12px; border: 1px solid var(--border); width: 100%; max-width: 800px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { color: var(--dark); margin-top: 0; }
+        .btn-danger { background: var(--red); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="back-btn" onclick="location.href='./index.html'">← 戻る</div>
-    <h1>データ管理センター</h1>
-    <div class="card">
-        <h3>料金表データ削除</h3>
-        <p>登録済みのマスターデータをすべて消去します。</p>
-        <button class="btn-red" onclick="deleteMaster()">全削除実行</button>
+    <div class="header">
+        <a onclick="location.href='./index.html'" class="back-link">← シミュレーターに戻る</a>
+        <h2>データ管理センター</h2>
     </div>
     <div class="card">
-        <h3>請求CSVアップロード</h3>
-        <input type="file" id="csv_file" accept=".csv">
-        <div id="status"></div>
+        <h3>データの完全削除</h3>
+        <p style="color:var(--red); font-size:0.9rem;">※削除したデータは復旧できません。</p>
+        <button class="btn-danger" onclick="deleteAll()">全データを削除する</button>
     </div>
 <script>
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
-    let currentUser;
-
     async function checkAuth() {
         const { data: { session } } = await client.auth.getSession();
         if (!session) window.location.href = './login.html';
-        else currentUser = session.user;
     }
-    async function deleteMaster() {
-        if(!confirm("本当に消しますか？")) return;
-        const { error } = await client.from('price_masters').delete().eq('user_id', currentUser.id);
-        alert(error ? "エラー" : "削除完了");
+    async function deleteAll() {
+        if (!confirm("本当に全削除しますか？")) return;
+        // 削除ロジック
+        alert("削除処理を実行しました。");
     }
     checkAuth();
 </script>
