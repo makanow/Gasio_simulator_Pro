@@ -276,8 +276,15 @@
                 label.className = 'checkbox-item';
                 const isChecked = idx === 0 ? 'checked' : '';
                 label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" ${isChecked}> (Demo) ${p.plan_id}: ${p.plan_name}`;
-                container.appendChild(label);
+    
+                // ★ここを追加：クリックされた時に再描画を走らせる
+                label.querySelector('input').addEventListener('change', () => {
+                    loadMasterData();
+                    loadTrendData();
             });
+    
+            container.appendChild(label);
+        });
             loadMasterData();
             loadTrendData();
             return;
