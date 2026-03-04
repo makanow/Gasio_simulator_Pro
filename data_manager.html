@@ -13,8 +13,8 @@
         
         /* タイトルとロゴのスタイル（青/赤） */
         .main-title { font-size: 2rem; font-weight: 800; color: var(--dark); margin: 0; letter-spacing: -1px; }
-        .main-title span.gasio { color: #3498db; }
-        .main-title span.pro { color: #e74c3c; }
+        .main-title .i { color: var(--red); }
+        .main-title .o { color: var(--accent); }
         
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; max-width: 900px; padding: 2rem; margin-bottom: 2rem; }
         .section-title { font-size: 1.25rem; font-weight: 700; border-left: 4px solid var(--accent); padding-left: 0.75rem; margin-bottom: 1.5rem; }
@@ -47,7 +47,7 @@
 <body>
 
 <div class="header">
-    <h1 class="main-title"><span class="gasio">Gasio</span> <span class="pro">Pro</span> 計算機 データ管理</h1>
+    <h1 class="main-title">Gas<span class="i">i</span><span class="o">o</span> 計算機 Pro データ管理</h1>
     <button class="btn btn-danger" onclick="location.href='index.html'">シミュレーターに戻る</button>
 </div>
 
