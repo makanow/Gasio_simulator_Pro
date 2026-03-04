@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Gasio 計算機Pro - データ管理</title>
+    <title>Gasio 計算機 Pro データ管理</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
@@ -10,7 +10,12 @@
         :root { --bg: #f8fafc; --text-main: #1e293b; --border: #e2e8f0; --accent: #3498db; --red: #e74c3c; --dark: #2c3e50; --green: #2ecc71; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
         .header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        
+        /* タイトルとロゴのスタイル（青/赤） */
         .main-title { font-size: 2rem; font-weight: 800; color: var(--dark); margin: 0; letter-spacing: -1px; }
+        .main-title span.gasio { color: #3498db; }
+        .main-title span.pro { color: #e74c3c; }
+        
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; max-width: 900px; padding: 2rem; margin-bottom: 2rem; }
         .section-title { font-size: 1.25rem; font-weight: 700; border-left: 4px solid var(--accent); padding-left: 0.75rem; margin-bottom: 1.5rem; }
         
@@ -18,6 +23,12 @@
         details.template-details { background: #f1f5f9; border-radius: 8px; overflow: hidden; }
         details.template-details summary { padding: 1rem; font-weight: 700; cursor: pointer; color: var(--dark); outline: none; transition: 0.2s; }
         details.template-details summary:hover { background: #e2e8f0; }
+        
+        /* summary の三角形をCSSで制御 */
+        details.template-details summary::-webkit-details-marker { display: none; }
+        details.template-details summary::after { content: ' ▼'; }
+        details.template-details[open] summary::after { content: ' ▲'; }
+
         .template-content { padding: 1.5rem; border-top: 1px solid var(--border); font-size: 0.85rem; line-height: 1.6; }
 
         .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 2rem; text-align: center; transition: all 0.2s; margin-bottom: 1.5rem; }
@@ -36,13 +47,13 @@
 <body>
 
 <div class="header">
-    <h1 class="main-title">Gasio <span style="color:var(--accent)">Pro</span> Manager</h1>
+    <h1 class="main-title"><span class="gasio">Gasio</span> <span class="pro">Pro</span> 計算機 データ管理</h1>
     <button class="btn btn-danger" onclick="location.href='index.html'">シミュレーターに戻る</button>
 </div>
 
 <div class="card">
     <details class="template-details">
-        <summary>▼ CSVアップロード用テンプレートと仕様を確認</summary>
+        <summary>CSVアップロード用テンプレートと仕様を確認</summary>
         <div class="template-content">
             1行目のヘッダー文字列は自由です（システムが自動的に判別・スキップします）。
             <br><br>
@@ -53,8 +64,8 @@
             並び順: 年月, 料金番号, 料金表番号, 使用量
             
             <div style="margin-top: 1.5rem; display: flex; gap: 10px;">
-                <button class="btn btn-secondary" onclick="downloadTemplate('master')">料金表マスタ 雛形DL (3種サンプル入)</button>
-                <button class="btn btn-secondary" onclick="downloadTemplate('billing')">請求データ(v3) 雛形DL (3種サンプル入)</button>
+                <button class="btn btn-secondary" onclick="downloadTemplate('master')">料金表マスタ テンプレートDL</button>
+                <button class="btn btn-secondary" onclick="downloadTemplate('billing')">請求データ テンプレートDL</button>
             </div>
         </div>
     </details>
@@ -130,7 +141,6 @@
         log(`ログイン中: ${user.email}`);
     }
 
-    // 雛形ダウンロード（3プラン×3区画、境界値0.1ズレ対応）
     function downloadTemplate(type) {
         let csvContent = "";
         let fileName = "";
