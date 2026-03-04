@@ -10,38 +10,24 @@
         :root { --bg: #f8fafc; --text-main: #1e293b; --border: #e2e8f0; --accent: #3498db; --red: #e74c3c; --dark: #2c3e50; --green: #2ecc71; }
         body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
         .header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        
-        /* タイトルとロゴのスタイル（青/赤） */
         .main-title { font-size: 2rem; font-weight: 800; color: var(--dark); margin: 0; letter-spacing: -1px; }
         .main-title .i { color: var(--red); }
         .main-title .o { color: var(--accent); }
-        
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; max-width: 900px; padding: 2rem; margin-bottom: 2rem; }
         .section-title { font-size: 1.25rem; font-weight: 700; border-left: 4px solid var(--accent); padding-left: 0.75rem; margin-bottom: 1.5rem; }
-        
-        /* 折りたたみセクションのスタイル */
         details.template-details { background: #f1f5f9; border-radius: 8px; overflow: hidden; }
-        details.template-details summary { padding: 1rem; font-weight: 700; cursor: pointer; color: var(--dark); outline: none; transition: 0.2s; }
-        details.template-details summary:hover { background: #e2e8f0; }
-        
-        /* summary の三角形をCSSで制御 */
-        details.template-details summary::-webkit-details-marker { display: none; }
+        details.template-details summary { padding: 1rem; font-weight: 700; cursor: pointer; outline: none; }
         details.template-details summary::after { content: ' ▼'; }
         details.template-details[open] summary::after { content: ' ▲'; }
-
         .template-content { padding: 1.5rem; border-top: 1px solid var(--border); font-size: 0.85rem; line-height: 1.6; }
-
-        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 2rem; text-align: center; transition: all 0.2s; margin-bottom: 1.5rem; }
-        .upload-area:hover { border-color: var(--accent); background: #f0f9ff; }
-        .btn { padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+        .upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 2rem; text-align: center; margin-bottom: 1.5rem; }
+        .btn { padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; }
         .btn-primary { background: var(--accent); color: white; }
         .btn-secondary { background: #2c3e50; color: white; margin-top: 1rem; }
         .btn-danger { background: #fee2e2; color: var(--red); }
-        .btn-danger:hover { background: var(--red); color: white; }
         .status { margin-top: 1rem; font-size: 0.9rem; font-weight: 600; }
         .status.success { color: var(--green); }
-        .status.error { color: var(--red); }
-        .console { background: #1e293b; color: #38bdf8; padding: 1rem; border-radius: 8px; font-family: monospace; width: 100%; max-width: 900px; height: 150px; overflow-y: auto; font-size: 0.85rem; line-height: 1.4; margin-bottom: 2rem; }
+        .console { background: #1e293b; color: #38bdf8; padding: 1rem; border-radius: 8px; font-family: monospace; width: 100%; max-width: 900px; height: 120px; overflow-y: auto; font-size: 0.85rem; margin-bottom: 2rem; }
     </style>
 </head>
 <body>
@@ -55,17 +41,11 @@
     <details class="template-details">
         <summary>CSVアップロード用テンプレートと仕様を確認</summary>
         <div class="template-content">
-            1行目のヘッダー文字列は自由です（システムが自動的に判別・スキップします）。
-            <br><br>
-            <b>1. 料金表マスター</b><br>
-            並び順: 料金番号, 料金名, 下限(m³), 上限(m³), 基本料金(円), 従量単価(円)
-            <br><br>
-            <b>2. 請求データ (v3)</b><br>
-            並び順: 年月, 料金番号, 料金表番号, 使用量
-            
-            <div style="margin-top: 1.5rem; display: flex; gap: 10px;">
-                <button class="btn btn-secondary" onclick="downloadTemplate('master')">料金表マスタ テンプレートDL</button>
-                <button class="btn btn-secondary" onclick="downloadTemplate('billing')">請求データ テンプレートDL</button>
+            <b>1. 料金表マスター (7列必須)</b><br>
+            料金番号, 料金名, <b>区画名</b>, 下限, 上限, 基本料金, 従量単価
+            <div style="margin-top: 1rem; display: flex; gap: 10px;">
+                <button class="btn btn-secondary" onclick="downloadTemplate('master')">料金表マスタ 雛形DL</button>
+                <button class="btn btn-secondary" onclick="downloadTemplate('billing')">請求データ(v3) 雛形DL</button>
             </div>
         </div>
     </details>
@@ -91,116 +71,63 @@
     <button class="btn btn-danger" onclick="deleteBillingV3()">全請求データを削除</button>
 </div>
 
-<div class="console" id="consoleLog">
-    [SYSTEM] 待機中... データの読み込み準備完了
-</div>
+<div class="console" id="consoleLog">[SYSTEM] 準備完了</div>
 
 <script>
-    const SUPABASE_URL = "https://etbsbcbzzxkbkasixmdb.supabase.co"; 
-    const SUPABASE_KEY = "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI"; 
-    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
     let currentUser = null;
 
     function log(msg) {
         const el = document.getElementById('consoleLog');
-        const time = new Date().toLocaleTimeString();
-        el.innerHTML += `<div>[${time}] ${msg}</div>`;
+        el.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
         el.scrollTop = el.scrollHeight;
     }
-
-    function cleanNum(val) {
-        if (val === undefined || val === null) return 0;
-        const s = val.toString().replace(/,/g, '').trim();
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
-    }
-
-    function standardizeYearMonth(val) {
-        if (!val) return null;
-        let s = val.toString().trim().replace(/["']/g, "");
-        if (s.includes('/') || s.includes('-')) {
-            const date = new Date(s);
-            if (!isNaN(date.getTime())) {
-                const y = date.getFullYear();
-                const m = (date.getMonth() + 1).toString().padStart(2, '0');
-                return `${y}${m}`;
-            }
-        }
-        if (s.length === 4 && /^\d+$/.test(s)) return "20" + s;
-        if (s.length === 6 && /^\d+$/.test(s)) return s;
-        return null;
-    }
-
-    function updateCounts() { log("データ件数を更新しました。"); }
-    function loadEditableMaster() { log("マスターデータをリロードしました。"); }
 
     async function checkAuth() {
         const { data: { user } } = await client.auth.getUser();
         if (!user) { location.href = 'login.html'; return; }
         currentUser = user;
-        log(`ログイン中: ${user.email}`);
     }
 
     function downloadTemplate(type) {
-        let csvContent = "";
-        let fileName = "";
+        let csv = "";
         if (type === 'master') {
-            const header = "料金番号,料金名,下限(m3),上限(m3),基本料金(円),従量単価(円)\n";
-            const plan1 = "1,一般料金,0,5.0,2000,650\n1,一般料金,5.1,20.0,2000,600\n1,一般料金,20.1,99999,2000,550\n";
-            const plan2 = "2,エコ上手,0,10.0,2500,580\n2,エコ上手,10.1,30.0,2500,530\n2,エコ上手,30.1,99999,2500,480\n";
-            const plan3 = "3,小型空調,0,50.0,5000,420\n3,小型空調,50.1,100.0,5000,380\n3,小型空調,100.1,99999,5000,350";
-            csvContent = header + plan1 + plan2 + plan3;
-            fileName = "template_master_sample.csv";
+            csv = "料金番号,料金名,区画名,下限(m3),上限(m3),基本料金(円),従量単価(円)\n101,一般料金,一般 A,0,8.0,1171,212.55\n101,一般料金,一般 B,8.1,30.0,1171,195.22\n101,一般料金,一般 C,30.1,99999,1171,180.50";
         } else {
-            const header = "年月,料金番号,料金表番号,使用量\n";
-            const data = "202403,1,1,12.5\n202403,2,2,45.8\n202403,3,3,120.0";
-            csvContent = header + data;
-            fileName = "template_billing_sample.csv";
+            csv = "年月,料金番号,料金表番号,使用量\n202403,101,101,12.5";
         }
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = fileName;
-        link.click();
-        log(`雛形生成: ${fileName}`);
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `template_${type}.csv`;
+        a.click();
     }
 
     async function uploadMaster() {
         const file = document.getElementById('file_master').files[0];
-        const statusEl = document.getElementById('status_master');
         if (!file) return;
-        statusEl.innerText = '解析中...'; statusEl.className = 'status loading';
-        log(`受信: ${file.name}`);
-
+        log(`${file.name} を解析中...`);
         const reader = new FileReader();
         reader.onload = function(e) {
-            const buffer = new Uint8Array(e.target.result);
-            const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
-            Papa.parse(unicodeString, {
+            const text = Encoding.convert(new Uint8Array(e.target.result), { to: 'UNICODE', type: 'string' });
+            Papa.parse(text, {
                 header: false, skipEmptyLines: true,
                 complete: async function(results) {
-                    let rawData = results.data;
-                    if (rawData.length > 0 && isNaN(parseInt(rawData[0][0]))) {
-                        rawData.shift(); log("ヘッダーをスキップ");
-                    }
-                    const insertData = rawData.map(row => ({
-                        user_id: currentUser.id, 
-                        plan_id: parseInt(cleanNum(row[0])), 
-                        plan_name: String(row[1] || "").trim(), 
-                        min_usage: cleanNum(row[2]), 
-                        max_usage: cleanNum(row[3]), 
-                        base_fee: cleanNum(row[4]), 
-                        unit_price: cleanNum(row[5])
-                    })).filter(d => !isNaN(d.plan_id));
-
+                    let data = results.data;
+                    if (isNaN(parseInt(data[0][0]))) data.shift();
+                    const insertData = data.map(row => ({
+                        user_id: currentUser.id,
+                        plan_id: parseInt(row[0]),
+                        plan_name: String(row[1] || "").trim(),
+                        tier_name: String(row[2] || "").trim(), // ★3列目を区画名として取得
+                        min_usage: parseFloat(row[3]) || 0,
+                        max_usage: parseFloat(row[4]) || 0,
+                        base_fee: parseFloat(row[5]) || 0,
+                        unit_price: parseFloat(row[6]) || 0
+                    }));
                     const { error } = await client.from('price_masters').insert(insertData);
-                    if (error) {
-                        statusEl.innerText = 'エラー: ' + error.message; statusEl.className = 'status error';
-                    } else { 
-                        statusEl.innerText = '✓ 完了'; statusEl.className = 'status success';
-                        updateCounts(); loadEditableMaster(); 
-                    }
+                    document.getElementById('status_master').innerText = error ? 'エラー: ' + error.message : '✓ 完了';
+                    log(error ? `❌ ${error.message}` : "✅ マスター登録成功");
                 }
             });
         };
@@ -208,58 +135,34 @@
     }
 
     async function handleBillingUpload(input) {
-        const file = input.files[0];
-        if (!file) return;
-        const statusEl = document.getElementById('billingStatus');
-        statusEl.innerText = '解析中...';
-        log(`受信: ${file.name}`);
-
+        const file = input.files[0]; if (!file) return;
+        log(`請求データ受信: ${file.name}`);
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const codes = new Uint8Array(e.target.result);
-            const encoding = Encoding.detect(codes);
-            const unicodeString = Encoding.convert(codes, { to: 'UNICODE', from: encoding, type: 'string' });
-            Papa.parse(unicodeString, {
+            const text = Encoding.convert(new Uint8Array(e.target.result), { to: 'UNICODE', type: 'string' });
+            Papa.parse(text, {
                 header: false, skipEmptyLines: true,
                 complete: async (results) => {
-                    let rawData = results.data;
-                    if (rawData.length > 0 && isNaN(parseInt(rawData[0][0])) && !standardizeYearMonth(rawData[0][0])) {
-                        rawData.shift(); log("ヘッダーをスキップ");
-                    }
-                    const insertData = rawData.map(row => ({
+                    let data = results.data;
+                    if (isNaN(parseInt(data[0][0]))) data.shift();
+                    const insertData = data.map(row => ({
                         user_id: currentUser.id,
-                        year_month: standardizeYearMonth(row[0]),
-                        plan_id: String(row[1] || "").trim(),
-                        tariff_id: String(row[2] || "").trim(),
+                        year_month: String(row[0]).trim(),
+                        plan_id: String(row[1]).trim(),
+                        tariff_id: String(row[2]).trim(),
                         usage_amount: parseFloat(row[3]) || 0
-                    })).filter(d => d.year_month && d.plan_id);
-
-                    let hasError = false;
-                    for (let i = 0; i < insertData.length; i += 1000) {
-                        const chunk = insertData.slice(i, i + 1000);
-                        const { error } = await client.from('gas_data_v3').insert(chunk);
-                        if (error) { hasError = true; log(`❌ エラー: ${error.message}`); break; }
-                        statusEl.innerText = `送信中 ${Math.round((i/insertData.length)*100)}%`;
-                    }
-                    if (!hasError) { statusEl.innerText = '✓ 完了'; statusEl.className = 'status success'; }
+                    }));
+                    const { error } = await client.from('gas_data_v3').insert(insertData);
+                    document.getElementById('billingStatus').innerText = error ? 'エラー' : '✓ 完了';
+                    log(error ? `❌ ${error.message}` : "✅ 請求データ登録成功");
                 }
             });
         };
         reader.readAsArrayBuffer(file);
     }
 
-    async function deleteMaster() {
-        if (!confirm("全削除しますか？")) return;
-        const { error } = await client.from('price_masters').delete().eq('user_id', currentUser.id);
-        if (!error) { log("🗑️ マスター削除完了"); updateCounts(); loadEditableMaster(); }
-    }
-
-    async function deleteBillingV3() {
-        if (!confirm("全削除しますか？")) return;
-        const { error } = await client.from('gas_data_v3').delete().eq('user_id', currentUser.id);
-        if (!error) { log("🗑️ 請求データ削除完了"); }
-    }
-
+    async function deleteMaster() { if (confirm("全削除？")) await client.from('price_masters').delete().eq('user_id', currentUser.id); log("🗑️ 削除完了"); }
+    async function deleteBillingV3() { if (confirm("全削除？")) await client.from('gas_data_v3').delete().eq('user_id', currentUser.id); log("🗑️ 削除完了"); }
     checkAuth();
 </script>
 </body>
