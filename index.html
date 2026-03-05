@@ -527,6 +527,9 @@
 
         <div class="control-group">
             <label>対象の料金表 (複数選択可)</label>
+            <div id="sidebar_status"
+                style="color: #3498db; font-size: 0.85rem; font-weight: bold; margin-bottom: 8px; min-height: 1.2rem;">
+            </div>
             <div class="checkbox-list" id="plan_checkboxes">
                 <div style="color:gray; font-size:0.8rem;">読み込み中...</div>
             </div>
@@ -723,6 +726,7 @@
         // 計算とCSV出力用のグローバル変数群
         window.trendChartData = null; // トレンドグラフ用
         window.rawBillingData = []; // DBから取得した生データ（またはデモデータ）
+        window.cachedRawData = null; // ★ここを追加：初回全データ保持用の金庫
         window.currentMasterRules = {}; // 選択中のプランルール
         window.currentAnomalies = []; // アラート対象顧客
         window.currentAllImpacts = []; // 全顧客のシミュレーション明細
@@ -915,36 +919,60 @@
                     }
                 }
             } else {
-                let step = 1000;
-                let start = 0;
-                let fetchMore = true;
+                // --- ここが爆速化の要（初回のみDB通信） ---
+                if (!window.cachedRawData) {
+                    // 1. グラフのタイトルは固定
+                    statusEl.innerText = "過去1年間の使用量推移 (料金表別)";
 
-                while (fetchMore) {
-                    const { data, error } = await client.from('gas_data_v3')
-                        .select('year_month, tariff_id, plan_id, usage_amount')
-                        .in('tariff_id', selectedIds)
-                        .eq('user_id', currentUser.id)
-                        .order('year_month', { ascending: true })
-                        .range(start, start + step - 1);
-
-                    if (error) {
-                        statusEl.innerText = "データ取得エラーが発生しました";
-                        if (trendChartObj) trendChartObj.destroy();
-                        return;
+                    // 2. サイドバーの表示場所を取得
+                    const sidebarStatus = document.getElementById('sidebar_status');
+                    if (sidebarStatus) {
+                        sidebarStatus.style.color = "#3498db";
+                        sidebarStatus.innerText = `初回データを読み込んでいます...`;
                     }
 
-                    if (data && data.length > 0) {
-                        allData = allData.concat(data);
-                        start += data.length;
-                        statusEl.innerText = `データ読込中... (${allData.length.toLocaleString()}件)`;
-                    }
+                    let fetchAllData = [];
+                    let step = 1000;
+                    let start = 0;
+                    let fetchMore = true;
 
-                    if (!data || data.length < step) {
-                        fetchMore = false;
+                    while (fetchMore) {
+                        const { data, error } = await client.from('gas_data_v3')
+                            .select('year_month, tariff_id, plan_id, usage_amount')
+                            .eq('user_id', currentUser.id)
+                            .order('year_month', { ascending: true })
+                            .range(start, start + step - 1);
+
+                        if (error) {
+                            if (sidebarStatus) sidebarStatus.innerText = "取得エラーが発生しました";
+                            if (trendChartObj) trendChartObj.destroy();
+                            return;
+                        }
+
+                        if (data && data.length > 0) {
+                            fetchAllData = fetchAllData.concat(data);
+                            start += data.length;
+                            // 3. サイドバーの数字をカウントアップ
+                            if (sidebarStatus) sidebarStatus.innerText = `データ読込中... (${fetchAllData.length.toLocaleString()}件)`;
+                        }
+
+                        if (!data || data.length < step) {
+                            fetchMore = false;
+                        }
+                    }
+                    window.cachedRawData = fetchAllData;
+
+                    // 4. 完了演出：緑にして2秒後に消す
+                    if (sidebarStatus) {
+                        sidebarStatus.style.color = "#2ecc71";
+                        sidebarStatus.innerText = `✓ ${window.cachedRawData.length.toLocaleString()}件 読込完了`;
+                        setTimeout(() => { sidebarStatus.innerText = ""; }, 2000);
                     }
                 }
-            }
 
+                // 金庫（キャッシュ）から抽出
+                allData = window.cachedRawData.filter(row => selectedIds.includes(String(row.tariff_id)));
+            }
             window.rawBillingData = allData;
 
             if (!allData || allData.length === 0) {
@@ -1250,27 +1278,68 @@
             const selectedIds = Array.from(checkboxes).map(cb => String(cb.value));
 
             if (selectedIds.length === 0) { alert("プランを選択してください。"); return; }
-            if (!window.rawBillingData || window.rawBillingData.length === 0) { alert("データがありません。"); return; }
 
+            btn.innerText = "データ準備中...";
+            btn.disabled = true;
+
+            // --- ① キャッシュを使った爆速データ準備 ---
+            if (!window.cachedRawData) {
+                const sidebarStatus = document.getElementById('sidebar_status');
+                if (sidebarStatus) {
+                    sidebarStatus.style.color = "#3498db";
+                    sidebarStatus.innerText = "全データをキャッシュ中...";
+                }
+
+                const { data, error } = await client.from('gas_data_v3').select('*').eq('user_id', currentUser.id);
+
+                if (error) {
+                    console.error(error);
+                    if (sidebarStatus) sidebarStatus.innerText = "取得失敗";
+                    alert("データ取得に失敗しました。");
+                    btn.innerText = "シミュレーション実行";
+                    btn.disabled = false;
+                    return;
+                }
+
+                window.cachedRawData = data; // 金庫に格納
+
+                if (sidebarStatus) {
+                    sidebarStatus.style.color = "#2ecc71";
+                    sidebarStatus.innerText = `✓ ${data.length.toLocaleString()}件 キャッシュ完了`;
+                    setTimeout(() => { sidebarStatus.innerText = ""; }, 2000);
+                }
+            }
+
+            // メモリ上で選択されたプランだけを抽出
+            const billingData = window.cachedRawData.filter(item => selectedIds.includes(String(item.tariff_id)));
+
+            if (billingData.length === 0) {
+                alert("該当するデータがありません。");
+                btn.innerText = "シミュレーション実行"; btn.disabled = false; return;
+            }
+
+            // --- ② UIからの値取得 ---
             const nBase = parseFloat(document.getElementById('n_base').value);
             const limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value));
             const prices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value));
 
-            btn.innerText = "計算中..."; status.innerText = "Processing...";
+            btn.innerText = "計算中...";
+            status.innerText = "Processing...";
 
-            // UIが固まらないように少し遅延させて計算を実行
+            // --- ③ 計算実行 ---
             setTimeout(() => {
                 let curTotal = 0, newTotal = 0;
                 let cTierMap = {}; let cTierSort = {}; let planTotalDist = {}; let nTierMap = {};
-                let cTierUsageMap = {}; let planTotalUsage = {};
+                let cTierUsageMap = {}; let planTotalUsage = {}; let cTierImpactMap = {};
 
-                window.rawBillingData.forEach(row => {
+                // キャッシュから抽出したデータをループ
+                billingData.forEach(row => {
                     let usage = parseFloat(row.usage_amount) || 0;
                     let tId = String(row.tariff_id);
 
                     // 現行計算
                     let curBill = 0;
-                    let cTierName = "区画A"; // 0m³はデフォルトでA区画に分類
+                    let cTierName = "区画A";
                     let cSortKey = 1;
                     let plan = window.currentMasterRules[tId];
                     if (plan && plan.tiers) {
@@ -1282,7 +1351,6 @@
                                 let maxU = tier.max_usage >= 99999 ? Infinity : tier.max_usage;
                                 if (usage > tier.min_usage - 0.001 && usage <= maxU + 0.001) {
                                     curBill = tier.base_fee + (usage * tier.unit_price);
-                                    // 0=A, 1=B, 2=C... とアルファベットに自動変換
                                     cTierName = `区画${String.fromCharCode(65 + i)}`;
                                     cSortKey = i + 1;
                                     break;
@@ -1293,7 +1361,7 @@
 
                     // 新料金計算
                     let newBill = nBase;
-                    let nTierName = "区画A"; // 0m³はデフォルトでA区画に分類
+                    let nTierName = "区画A";
                     let nSortKey = 1;
                     if (usage === 0) {
                         newBill = nBase;
@@ -1303,7 +1371,6 @@
                             let minU = i === 0 ? 0 : limits[i - 1];
                             if (usage > minU && usage <= maxU) {
                                 newBill = nBase + (usage * prices[i]);
-                                // こちらもアルファベットに自動変換
                                 nTierName = `区画${String.fromCharCode(65 + i)}`;
                                 nSortKey = i + 1;
                                 break;
@@ -1316,17 +1383,24 @@
 
                     if (cTierMap[cTierName] === undefined) { cTierMap[cTierName] = 0; cTierSort[cTierName] = cSortKey; }
                     cTierMap[cTierName] += 1;
-                    if (cTierUsageMap[cTierName] === undefined) cTierUsageMap[cTierName] = 0;
-                    cTierUsageMap[cTierName] += usage;
 
                     if (planTotalDist[tId] === undefined) planTotalDist[tId] = 0;
                     planTotalDist[tId] += 1;
-                    if (planTotalUsage[tId] === undefined) planTotalUsage[tId] = 0;
-                    planTotalUsage[tId] += usage;
 
                     if (nTierMap[nTierName] === undefined) { nTierMap[nTierName] = { cur: 0, new: 0, sort: nSortKey }; }
                     nTierMap[nTierName].cur += curBill;
                     nTierMap[nTierName].new += newBill;
+
+                    // ▼ 使用量とインパクトの集計
+                    if (cTierUsageMap[cTierName] === undefined) cTierUsageMap[cTierName] = 0;
+                    cTierUsageMap[cTierName] += usage;
+
+                    if (planTotalUsage[tId] === undefined) planTotalUsage[tId] = 0;
+                    planTotalUsage[tId] += usage;
+
+                    const impact = newBill - curBill;
+                    if (cTierImpactMap[cTierName] === undefined) cTierImpactMap[cTierName] = 0;
+                    cTierImpactMap[cTierName] += impact;
                 });
 
                 // UI反映
@@ -1342,7 +1416,7 @@
                 deltaEl.className = "delta " + (delta >= 0 ? "plus" : "minus");
                 document.getElementById('card_diff').style.borderLeftColor = delta >= 0 ? 'var(--green)' : 'var(--red)';
 
-                // グラフ描画
+                // グラフ描画1: 調定数
                 const ctx1 = document.getElementById('distChart').getContext('2d');
                 if (distChartObj) distChartObj.destroy();
 
@@ -1387,31 +1461,21 @@
                             plugins: { legend: { display: false }, datalabels: { display: false } }
                         }
                     });
-
                 }
 
-                // --- 使用量比率グラフの描画（ここから追加） ---
+                // グラフ描画2: 使用量
                 const ctxUsage = document.getElementById('usageDistChart').getContext('2d');
                 if (usageDistChartObj) usageDistChartObj.destroy();
 
-                const usageDistData = sortedCTiers.map(t => cTierUsageMap[t] || 0);
+                const usageDistData = sortedCTiers.map(t => cTierUsageMap[t]);
 
                 if (selectedIds.length === 1) {
                     document.getElementById('usage_dist_title').innerText = "現行区画別 使用量比率";
                     usageDistChartObj = new Chart(ctxUsage, {
-                        type: 'doughnut',
-                        data: {
-                            labels: sortedCTiers,
-                            datasets: [{
-                                data: usageDistData,
-                                backgroundColor: bgColors,
-                                borderWidth: 2,
-                                borderColor: '#fff'
-                            }]
-                        },
+                        type: 'pie',
+                        data: { labels: sortedCTiers, datasets: [{ data: usageDistData, backgroundColor: bgColors, borderWidth: 2, borderColor: '#fff' }] },
                         options: {
                             responsive: true, maintainAspectRatio: false,
-                            cutout: '65%',
                             plugins: {
                                 legend: { position: 'right' },
                                 datalabels: {
@@ -1423,12 +1487,11 @@
                                     color: '#fff', font: { weight: 'bold', size: 12 },
                                     backgroundColor: 'rgba(0, 0, 0, 0.4)', borderRadius: 4, padding: 4
                                 },
-                                tooltip: { callbacks: { label: (c) => c.label + ': ' + c.parsed.toLocaleString() + ' m³' } }
+                                tooltip: { callbacks: { label: function (c) { return c.label + ': ' + c.parsed.toLocaleString() + ' m³'; } } }
                             }
                         }
                     });
                 } else {
-                    // 複数プラン選択時は棒グラフを表示
                     document.getElementById('usage_dist_title').innerText = "プラン別 総使用量";
                     const pUsageLabels = Object.keys(planTotalUsage).map(p => `Plan ${p}`);
                     const usageDataTotal = Object.values(planTotalUsage);
@@ -1437,22 +1500,16 @@
                         data: { labels: pUsageLabels, datasets: [{ label: '総使用量(m³)', data: usageDataTotal, backgroundColor: '#2ecc71', borderRadius: 4 }] },
                         options: {
                             responsive: true, maintainAspectRatio: false,
-                            plugins: { legend: { display: false }, datalabels: { display: false } },
                             scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    title: { display: true, text: 'm³' },
-                                    grid: { color: '#f1f5f9' } // 横線は薄く残すと見やすい
-                                },
-                                x: {
-                                    grid: { display: false } // ← これで縦線が消える！
-                                }
-                            }
+                                x: { grid: { display: false } },
+                                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '総使用量 (m³)', font: { size: 11 } } }
+                            },
+                            plugins: { legend: { display: false }, datalabels: { display: false } }
                         }
                     });
                 }
-                // --- 使用量比率グラフの描画（ここまで） ---
 
+                // グラフ描画3: 収益比較
                 const ctx2 = document.getElementById('revChart').getContext('2d');
                 if (revChartObj) revChartObj.destroy();
 
@@ -1479,63 +1536,53 @@
                     }
                 });
 
-                // --- 収益インパクトグラフの描画（ここから追加） ---
+                // グラフ描画4: 収益インパクト
                 const ctxImpact = document.getElementById('impactChart').getContext('2d');
                 if (impactChartObj) impactChartObj.destroy();
 
-                // 区画ごとの「新料金 - 旧料金」の差額を計算
-                const impactData = sortedNTiers.map(t => nTierMap[t].new - nTierMap[t].cur);
-
-                // 増額なら赤系、減額なら青系の色を自動設定
-                const impactColors = impactData.map(val => val >= 0 ? 'rgba(231, 76, 60, 0.7)' : 'rgba(52, 152, 219, 0.7)');
+                const impactData = sortedCTiers.map(t => cTierImpactMap[t]);
 
                 impactChartObj = new Chart(ctxImpact, {
                     type: 'bar',
                     data: {
-                        labels: sortedNTiers,
+                        labels: sortedCTiers,
                         datasets: [{
-                            label: '収益増減額 (円)',
+                            label: '増収・減収額 (円)',
                             data: impactData,
-                            backgroundColor: impactColors,
+                            backgroundColor: impactData.map(v => v >= 0 ? 'rgba(52, 152, 219, 0.7)' : 'rgba(231, 76, 60, 0.7)'),
                             borderRadius: 4
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
+                            // ▼ 修正：グラフ上の数字（データラベル）の小数点を消す
                             datalabels: {
-                                display: true,
-                                anchor: 'end',
-                                align: 'top',
-                                formatter: (val) => {
-                                    // Math.round() で四捨五入して整数にし、toLocaleStringでカンマ区切りにする
-                                    const integerVal = Math.round(val);
-                                    return (integerVal >= 0 ? '+' : '') + integerVal.toLocaleString();
-                                },
-                                font: {
-                                    size: 13,          // ← サイズを10から13にアップ
-                                    weight: 'bold'
-                                },
-                                offset: 4              // ← 棒との隙間を少し空ける
-                            }
+                                formatter: (value) => Math.round(value).toLocaleString(),
+                                font: { size: 11 }
+                                // もしグラフ上の数字自体が邪魔で消したい場合は display: false にしてくれ
+                            },
+                            // ▼ 修正：ホバー時の吹き出しも丸める
+                            tooltip: { callbacks: { label: (c) => `インパクト: ${Math.round(c.parsed.y).toLocaleString()} 円` } }
                         },
                         scales: {
                             y: {
                                 beginAtZero: true,
                                 grid: { color: '#f1f5f9' },
-                                title: { display: true, text: '増減額 (円)', font: { size: 11 } }
+                                title: { display: true, text: '増減合計 (円)', font: { size: 11 } },
+                                // ▼ 修正：Y軸の目盛りも小数点を消す
+                                ticks: { callback: (value) => Math.round(value).toLocaleString() }
                             },
                             x: { grid: { display: false } }
                         }
                     }
                 });
-                // --- 収益インパクトグラフの描画（ここまで） ---
 
                 detectAnomalies();
 
                 btn.innerText = "シミュレーション実行";
+                btn.disabled = false;
                 status.innerHTML = window.isDemoMode
                     ? "<span style='color:var(--demo); font-weight:bold;'>✨ デモデータでシミュレーション完了</span>"
                     : "✓ 完了";
