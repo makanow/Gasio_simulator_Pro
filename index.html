@@ -34,14 +34,18 @@
         }
 
         .sidebar {
-            width: 380px;
+            width: 250px;
+            /* 380pxから250pxへ大幅カット */
             background: var(--sidebar);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 2rem 1.5rem;
+            padding: 1.5rem 1rem;
+            /* 上下2→1.5、左右1.5→1に少し詰める */
             overflow-y: auto;
             z-index: 10;
+            flex-shrink: 0;
+            /* サイドバー自体が勝手に縮まないように固定 */
         }
 
         .main-title {
@@ -50,6 +54,15 @@
             color: var(--dark);
             margin-bottom: 0px;
             letter-spacing: -1px;
+        }
+
+        .sidebar-logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 5px;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
         }
 
         .sub-title {
@@ -508,7 +521,7 @@
 <body>
 
     <div class="sidebar">
-        <div class="main-title"><span style="color:#2c3e50">Gas</span><span style="color:#e74c3c">i</span><span
+        <div class="sidebar-logo"><span style="color:#2c3e50">Gas</span><span style="color:#e74c3c">i</span><span
                 style="color:#3498db">o</span> 計算機 Pro</div>
         <div class="sub-title">Rate Simulation System</div>
 
@@ -594,54 +607,58 @@
             </div>
         </details>
 
-        <div class="metrics-grid">
-            <div class="metric-card">
+        <div class="metrics-grid" style="display: flex; flex-wrap: wrap; gap: 10px; width: 100%; min-width: 0;">
+            <div class="metric-card" style="flex: 1; min-width: 150px;">
                 <div class="m-label">現行 総収益 (推定)</div>
-                <div id="v_cur" class="m-value">¥0</div>
+                <div id="v_cur" class="m-value" style="word-break: break-all;">¥0</div>
             </div>
-            <div class="metric-card" style="border-left-color: #e67e22;">
+            <div class="metric-card" style="border-left-color: #e67e22; flex: 1; min-width: 150px;">
                 <div class="m-label">新料金 総収益</div>
-                <div id="v_new" class="m-value">¥0</div>
+                <div id="v_new" class="m-value" style="word-break: break-all;">¥0</div>
             </div>
-            <div class="metric-card" id="card_diff">
+            <div class="metric-card" id="card_diff" style="flex: 1; min-width: 150px;">
                 <div class="m-label">収益インパクト (差額)</div>
-                <div id="v_diff" class="m-value">¥0</div>
+                <div id="v_diff" class="m-value" style="word-break: break-all;">¥0</div>
                 <div id="v_delta" class="delta">-</div>
             </div>
         </div>
 
         <div class="charts-grid">
-            <div class="chart-box">
+            <div class="chart-box" style="min-width: 0;">
                 <div class="chart-header">
                     <h3 id="dist_title">現行区画別 調定数比率</h3>
                 </div>
-                <div class="canvas-container"><canvas id="distChart"></canvas></div>
+                <div class="canvas-container" style="height: 300px; width: 100%; min-width: 0;"><canvas
+                        id="distChart"></canvas></div>
             </div>
 
-            <div class="chart-box">
+            <div class="chart-box" style="min-width: 0;">
                 <div class="chart-header">
                     <h3 id="usage_dist_title">現行区画別 使用量比率</h3>
                 </div>
-                <div class="canvas-container"><canvas id="usageDistChart"></canvas></div>
+                <div class="canvas-container" style="height: 300px; width: 100%; min-width: 0;"><canvas
+                        id="usageDistChart"></canvas></div>
             </div>
 
-            <div class="chart-box">
+            <div class="chart-box" style="min-width: 0;">
                 <div class="chart-header">
                     <h3>区画別 収益比較</h3>
                 </div>
-                <div class="canvas-container"><canvas id="revChart"></canvas></div>
+                <div class="canvas-container" style="height: 300px; width: 100%; min-width: 0;"><canvas
+                        id="revChart"></canvas></div>
             </div>
 
-            <div class="chart-box">
+            <div class="chart-box" style="min-width: 0;">
                 <div class="chart-header">
                     <h3 id="impact_title">区画別 収益インパクト</h3>
                 </div>
-                <div class="canvas-container"><canvas id="impactChart"></canvas></div>
+                <div class="canvas-container" style="height: 300px; width: 100%; min-width: 0;"><canvas
+                        id="impactChart"></canvas></div>
             </div>
         </div>
 
-        <div class="trend-grid">
-            <div class="chart-box">
+        <div class="trend-grid" style="min-width: 0;">
+            <div class="chart-box" style="min-width: 0;">
                 <div class="chart-header">
                     <h3>過去1年間の使用量推移 (料金表別)</h3>
                     <div class="toggle-container">
@@ -653,8 +670,10 @@
                         積み上げ棒
                     </div>
                 </div>
-                <div class="canvas-container" style="height: 400px; margin-bottom: 30px;"><canvas
-                        id="trendChart"></canvas></div>
+                <div class="canvas-container"
+                    style="height: 400px; margin-bottom: 30px; width: 100%; min-width: 0; overflow: hidden;">
+                    <canvas id="trendChart"></canvas>
+                </div>
                 <div id="trend_status"
                     style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; display: none;">
                     データを読み込んでいます...</div>
