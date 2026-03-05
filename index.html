@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <title>Gasio 計算機 Pro</title>
@@ -7,751 +8,1201 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
-        :root { 
-            --bg: #f8fafc; --sidebar: #ffffff; --text-main: #1e293b; --text-muted: #64748b; 
-            --border: #e2e8f0; --accent: #3498db; --accent-hover: #2980b9; 
-            --red: #e74c3c; --green: #2ecc71; --dark: #2c3e50; --demo: #9b59b6;
+        :root {
+            --bg: #f8fafc;
+            --sidebar: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --accent: #3498db;
+            --accent-hover: #2980b9;
+            --red: #e74c3c;
+            --green: #2ecc71;
+            --dark: #2c3e50;
+            --demo: #9b59b6;
         }
-        body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; display: flex; height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased; }
-        
-        .sidebar { width: 380px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 2rem 1.5rem; overflow-y: auto; z-index: 10; }
-        
-        .main-title { font-size: 2.2rem; font-weight: 800; color: var(--dark); margin-bottom: 0px; letter-spacing: -1px; }
-        .sub-title { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; margin-bottom: 24px; border-bottom: 2px solid var(--accent); padding-bottom: 12px; font-weight: 600; }
-        
-        .control-group { margin-bottom: 1.5rem; }
-        label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-muted); }
-        
-        .checkbox-list { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; max-height: 140px; overflow-y: auto; }
-        .checkbox-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.9rem; font-weight: 500; }
-        .checkbox-item input { margin: 0; cursor: pointer; accent-color: var(--accent); }
 
-        .input-matrix { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-        .input-matrix th { background: #f1f5f9; padding: 0.5rem; text-align: left; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); }
-        .input-matrix td { padding: 0.3rem 0.4rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; font-weight: 500; vertical-align: middle; }
-        .input-matrix input { width: 100%; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; box-sizing: border-box; text-align: right; background: #fff; font-family: monospace; }
-        .input-matrix input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2); }
-        .input-limit { color: var(--accent); font-weight: bold; }
-        
-        .del-btn { background: none; border: none; color: #cbd5e1; cursor: pointer; font-size: 1.2rem; padding: 0 0.3rem; transition: 0.2s; }
-        .del-btn:hover { color: var(--red); }
-        .add-tier-btn { background: none; border: 1px dashed var(--accent); color: var(--accent); padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; width: 100%; margin-top: 0.5rem; transition: 0.2s; }
-        .add-tier-btn:hover { background: #eff6ff; }
-        
-        .run-btn { background: var(--accent); color: white; border: none; padding: 1rem; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; transition: 0.2s; }
-        .run-btn:hover { background: var(--accent-hover); }
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
 
-        .sidebar-bottom { margin-top: auto; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
-        .nav-link-btn { text-align: center; text-decoration: none; background: #f8fafc; color: var(--dark); border: 1px solid var(--border); padding: 0.8rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem; transition: 0.2s; cursor: pointer; }
-        .nav-link-btn:hover { background: #e2e8f0; }
+        .sidebar {
+            width: 380px;
+            background: var(--sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 2rem 1.5rem;
+            overflow-y: auto;
+            z-index: 10;
+        }
 
-        .main { flex: 1; padding: 2rem 3rem; overflow-y: auto; display: block; }
-        .main > * { margin-bottom: 1.5rem; }
-        
-        details.master-details { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        details.master-details summary { padding: 1rem 1.5rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; list-style: none; display: flex; align-items: center; color: var(--dark); background: #f8fafc; }
-        details.master-details summary::-webkit-details-marker { display: none; }
-        details.master-details summary::after { content: "▼"; font-size: 0.7rem; color: var(--text-muted); transition: transform 0.3s; margin-left: auto; }
-        details[open].master-details summary::after { transform: rotate(180deg); }
-        
-        .master-content { padding: 1.5rem; border-top: 1px solid var(--border); background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
-        .plan-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .plan-card-header { background: var(--dark); color: #fff; padding: 0.75rem 1rem; font-weight: bold; font-size: 0.9rem; }
-        .plan-card-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-        .plan-card-table th, .plan-card-table td { padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); text-align: left; }
-        .plan-card-table th { color: var(--text-muted); font-weight: 600; background: #f1f5f9; width: 40%; }
-        .plan-card-table td.num { text-align: right; font-family: monospace; font-size: 0.9rem; }
+        .main-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 0px;
+            letter-spacing: -1px;
+        }
 
-        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-        .metric-card { background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); border-left: 5px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .m-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
-        .m-value { font-size: 2rem; font-weight: 800; margin: 0.5rem 0; color: var(--dark); font-variant-numeric: tabular-nums; }
-        .delta { font-size: 0.9rem; font-weight: 700; }
-        .delta.plus { color: var(--green); } .delta.minus { color: var(--red); }
-        
-        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; height: 350px; }
-        .trend-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; height: 350px; margin-top: 1.5rem; }
-        
-        .chart-box { background: #fff; border-radius: 8px; border: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .chart-box h3 { margin: 0; font-size: 1rem; color: var(--dark); }
-        .canvas-container { flex: 1; position: relative; min-height: 0; }
-        
-        .toggle-container { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: bold; color: var(--text-muted); }
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        .sub-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 12px;
+            font-weight: 600;
+        }
 
-        .anomaly-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .anomaly-table th { background: #fef2f2; padding: 0.75rem; text-align: left; color: var(--red); border-bottom: 2px solid #fecaca; }
-        .anomaly-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-        .badge-up { background: var(--red); color: white; padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .checkbox-list {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            max-height: 140px;
+            overflow-y: auto;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .checkbox-item input {
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .input-matrix {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .input-matrix th {
+            background: #f1f5f9;
+            padding: 0.5rem;
+            text-align: left;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .input-matrix td {
+            padding: 0.3rem 0.4rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            font-weight: 500;
+            vertical-align: middle;
+        }
+
+        .input-matrix input {
+            width: 100%;
+            padding: 0.4rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            text-align: right;
+            background: #fff;
+            font-family: monospace;
+        }
+
+        .input-matrix input:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .input-limit {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .del-btn {
+            background: none;
+            border: none;
+            color: #cbd5e1;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 0.3rem;
+            transition: 0.2s;
+        }
+
+        .del-btn:hover {
+            color: var(--red);
+        }
+
+        .add-tier-btn {
+            background: none;
+            border: 1px dashed var(--accent);
+            color: var(--accent);
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 0.5rem;
+            transition: 0.2s;
+        }
+
+        .add-tier-btn:hover {
+            background: #eff6ff;
+        }
+
+        .run-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: 0.2s;
+        }
+
+        .run-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-link-btn {
+            text-align: center;
+            text-decoration: none;
+            background: #f8fafc;
+            color: var(--dark);
+            border: 1px solid var(--border);
+            padding: 0.8rem;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-link-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .main {
+            flex: 1;
+            padding: 2rem 3rem;
+            overflow-y: auto;
+            display: block;
+        }
+
+        .main>* {
+            margin-bottom: 1.5rem;
+        }
+
+        details.master-details {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: 0.3s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        details.master-details summary {
+            padding: 1rem 1.5rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            color: var(--dark);
+            background: #f8fafc;
+        }
+
+        details.master-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        details.master-details summary::after {
+            content: "▼";
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.3s;
+            margin-left: auto;
+        }
+
+        details[open].master-details summary::after {
+            transform: rotate(180deg);
+        }
+
+        .master-content {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            background: #f8fafc;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .plan-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .plan-card-header {
+            background: var(--dark);
+            color: #fff;
+            padding: 0.75rem 1rem;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .plan-card-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .plan-card-table th,
+        .plan-card-table td {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .plan-card-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            background: #f1f5f9;
+            width: 40%;
+        }
+
+        .plan-card-table td.num {
+            text-align: right;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .metric-card {
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            border-left: 5px solid var(--accent);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .m-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .m-value {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0.5rem 0;
+            color: var(--dark);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .delta {
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .delta.plus {
+            color: var(--green);
+        }
+
+        .delta.minus {
+            color: var(--red);
+        }
+
+        /* 修正後 */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            /* height: 350px; は削除 */
+        }
+
+        .chart-box {
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            min-height: 350px;
+            /* 各箱に最低限の高さを保証させる */
+        }
+
+        .trend-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            height: 350px;
+            margin-top: 1.5rem;
+        }
+
+        .chart-box {
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-box h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--dark);
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .anomaly-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .anomaly-table th {
+            background: #fef2f2;
+            padding: 0.75rem;
+            text-align: left;
+            color: var(--red);
+            border-bottom: 2px solid #fecaca;
+        }
+
+        .anomaly-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+
+        .badge-up {
+            background: var(--red);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
+
 <body>
 
-<div class="sidebar">
-    <div class="main-title"><span style="color:#2c3e50">Gas</span><span style="color:#e74c3c">i</span><span style="color:#3498db">o</span> 計算機 Pro</div>
-    <div class="sub-title">Rate Simulation System</div>
+    <div class="sidebar">
+        <div class="main-title"><span style="color:#2c3e50">Gas</span><span style="color:#e74c3c">i</span><span
+                style="color:#3498db">o</span> 計算機 Pro</div>
+        <div class="sub-title">Rate Simulation System</div>
 
-    <div class="control-group">
-        <label>対象の料金表 (複数選択可)</label>
-        <div class="checkbox-list" id="plan_checkboxes">
-            <div style="color:gray; font-size:0.8rem;">読み込み中...</div>
-        </div>
-    </div>
-    
-    <div class="control-group">
-        <label>新料金マトリックス</label>
-        <table class="input-matrix" id="tier_table">
-            <thead>
-                <tr><th style="width:15%">区画</th><th style="width:35%">上限 (m³)</th><th style="width:40%">単価 (円)</th><th style="width:10%"></th></tr>
-            </thead>
-            <tbody id="tier_body">
-                <tr>
-                    <td style="text-align:center;">基</td>
-                    <td style="text-align:center; color:#ccc;">-</td>
-                    <td><input type="number" id="n_base" value="2000" step="10"></td>
-                    <td></td>
-                </tr>
-                <tr class="tier-row">
-                    <td class="tier-label" style="text-align:center;">1</td>
-                    <td><input type="number" class="input-limit" value="5" step="1"></td>
-                    <td><input type="number" class="input-price" value="650" step="1"></td>
-                    <td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td>
-                </tr>
-                <tr class="tier-row">
-                    <td class="tier-label" style="text-align:center;">2</td>
-                    <td><input type="number" class="input-limit" value="20" step="1"></td>
-                    <td><input type="number" class="input-price" value="600" step="1"></td>
-                    <td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td>
-                </tr>
-                <tr class="final-tier">
-                    <td class="tier-label" style="text-align:center;">3</td>
-                    <td style="text-align:center; color:#ccc; font-size:0.75rem;">それ以上</td>
-                    <td><input type="number" class="input-price" value="550" step="1"></td>
-                    <td></td>
-                </tr>
-            </tbody>
-        </table>
-        <button class="add-tier-btn" onclick="addTier()">+ 区画を追加</button>
-    </div>
-    
-    <button class="run-btn" id="run_btn">シミュレーション実行</button>
-    <div id="status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; margin-bottom: 1.5rem;">Ready</div>
-
-    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem;">
-        <button class="nav-link-btn" onclick="exportComprehensiveCSV()" style="width: 100%; color: var(--accent); border-color: var(--accent); background: #f0f9ff;">
-            📊 総合レポート出力 (CSV)
-        </button>
-        <button class="nav-link-btn" onclick="exportAllCSV()" style="width: 100%; color: #334155; border-color: var(--border); background: #f8fafc;">
-            📥 全ての料金番号を出力 (CSV)
-        </button>
-    </div>
-
-    <div class="sidebar-bottom">
-        <a href="data_manager.html" class="nav-link-btn">⚙️ データ管理・設定</a>
-        <button onclick="logOut()" class="nav-link-btn" style="color: var(--red); border-color: #f5b7b1;">🚪 ログアウト</button>
-    </div>
-</div>
-
-<div class="main">
-    <details class="master-details">
-        <summary>現行料金表マスターを確認</summary>
-        <div id="master_table_container" class="master-content">
-            <p style="color:var(--text-muted); font-size:0.85rem; margin:0; grid-column: 1 / -1;">左のメニューからプランを選択してください。</p>
-        </div>
-    </details>
-
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <div class="m-label">現行 総収益 (推定)</div>
-            <div id="v_cur" class="m-value">¥0</div>
-        </div>
-        <div class="metric-card" style="border-left-color: #e67e22;">
-            <div class="m-label">新料金 総収益</div>
-            <div id="v_new" class="m-value">¥0</div>
-        </div>
-        <div class="metric-card" id="card_diff">
-            <div class="m-label">収益インパクト (差額)</div>
-            <div id="v_diff" class="m-value">¥0</div>
-            <div id="v_delta" class="delta">-</div>
-        </div>
-    </div>
-
-    <div class="charts-grid">
-        <div class="chart-box">
-            <div class="chart-header">
-                <h3 id="dist_title">現行区画別 調定数比率</h3>
+        <div class="control-group">
+            <label>対象の料金表 (複数選択可)</label>
+            <div class="checkbox-list" id="plan_checkboxes">
+                <div style="color:gray; font-size:0.8rem;">読み込み中...</div>
             </div>
-            <div class="canvas-container"><canvas id="distChart"></canvas></div>
         </div>
-        <div class="chart-box">
-            <div class="chart-header">
-                <h3>区画別 収益比較</h3>
-            </div>
-            <div class="canvas-container"><canvas id="revChart"></canvas></div>
+
+        <div class="control-group">
+            <label>新料金マトリックス</label>
+            <table class="input-matrix" id="tier_table">
+                <thead>
+                    <tr>
+                        <th style="width:15%">区画</th>
+                        <th style="width:35%">上限 (m³)</th>
+                        <th style="width:40%">単価 (円)</th>
+                        <th style="width:10%"></th>
+                    </tr>
+                </thead>
+                <tbody id="tier_body">
+                    <tr>
+                        <td style="text-align:center;">基</td>
+                        <td style="text-align:center; color:#ccc;">-</td>
+                        <td><input type="number" id="n_base" value="2000" step="10"></td>
+                        <td></td>
+                    </tr>
+                    <tr class="tier-row">
+                        <td class="tier-label" style="text-align:center;">1</td>
+                        <td><input type="number" class="input-limit" value="5" step="1"></td>
+                        <td><input type="number" class="input-price" value="650" step="1"></td>
+                        <td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button>
+                        </td>
+                    </tr>
+                    <tr class="tier-row">
+                        <td class="tier-label" style="text-align:center;">2</td>
+                        <td><input type="number" class="input-limit" value="20" step="1"></td>
+                        <td><input type="number" class="input-price" value="600" step="1"></td>
+                        <td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button>
+                        </td>
+                    </tr>
+                    <tr class="final-tier">
+                        <td class="tier-label" style="text-align:center;">3</td>
+                        <td style="text-align:center; color:#ccc; font-size:0.75rem;">それ以上</td>
+                        <td><input type="number" class="input-price" value="550" step="1"></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <button class="add-tier-btn" onclick="addTier()">+ 区画を追加</button>
+        </div>
+
+        <button class="run-btn" id="run_btn">シミュレーション実行</button>
+        <div id="status"
+            style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; margin-bottom: 1.5rem;">
+            Ready</div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem;">
+            <button class="nav-link-btn" onclick="exportComprehensiveCSV()"
+                style="width: 100%; color: var(--accent); border-color: var(--accent); background: #f0f9ff;">
+                📊 総合レポート出力 (CSV)
+            </button>
+            <button class="nav-link-btn" onclick="exportAllCSV()"
+                style="width: 100%; color: #334155; border-color: var(--border); background: #f8fafc;">
+                📥 全ての料金番号を出力 (CSV)
+            </button>
+        </div>
+
+        <div class="sidebar-bottom">
+            <a href="data_manager.html" class="nav-link-btn">⚙️ データ管理・設定</a>
+            <button onclick="logOut()" class="nav-link-btn" style="color: var(--red); border-color: #f5b7b1;">🚪
+                ログアウト</button>
         </div>
     </div>
 
-    <div class="trend-grid">
-        <div class="chart-box">
-            <div class="chart-header">
-                <h3>過去1年間の使用量推移 (料金表別)</h3>
-                <div class="toggle-container">
-                    折れ線
-                    <label class="switch">
-                        <input type="checkbox" id="trend_toggle" onchange="toggleTrendChart()">
-                        <span class="slider"></span>
-                    </label>
-                    積み上げ棒
-                </div>
-            </div>
-            <div class="canvas-container"><canvas id="trendChart"></canvas></div>
-            <div id="trend_status" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; display: none;">データを読み込んでいます...</div>
-        </div>
-    </div>
-
-    <div id="anomaly_container" style="display: none; margin-top: 1.5rem;">
-        <details class="master-details" style="border-left: 5px solid var(--red);">
-            <summary style="background: #fef2f2;">
-                <h3 style="color: var(--red); margin: 0; display: flex; align-items: center; gap: 15px;">
-                    ⚠️ 異常値アラート (シミュレーション結果)
-                    <div style="font-size: 0.85rem; color: var(--dark); font-weight: normal; display: flex; align-items: center; gap: 5px;" onclick="event.stopPropagation();">
-                        検知ライン: 
-                        <input type="number" id="anomaly_threshold" value="20" step="1" onchange="detectAnomalies()" style="width: 60px; padding: 0.2rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; font-weight: bold;"> %以上の上昇
-                    </div>
-                </h3>
-                <span id="anomaly_count" style="font-weight:bold; color:var(--red); font-size:0.9rem; margin-left:15px; margin-right: 15px;">0件</span>
-            </summary>
-            
-            <div style="padding: 1.5rem; border-top: 1px solid var(--border); background: #fff;">
-                <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
-                    <button class="nav-link-btn" onclick="exportAnomalyCSV()" style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--red); border-color: var(--red);">
-                        📥 アラート対象のみ出力 (CSV)
-                    </button>
-                </div>
-                
-                <div id="anomaly_list" style="max-height: 250px; overflow-y: auto;">
-                    </div>
+    <div class="main">
+        <details class="master-details">
+            <summary>現行料金表マスターを確認</summary>
+            <div id="master_table_container" class="master-content">
+                <p style="color:var(--text-muted); font-size:0.85rem; margin:0; grid-column: 1 / -1;">
+                    左のメニューからプランを選択してください。</p>
             </div>
         </details>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="m-label">現行 総収益 (推定)</div>
+                <div id="v_cur" class="m-value">¥0</div>
+            </div>
+            <div class="metric-card" style="border-left-color: #e67e22;">
+                <div class="m-label">新料金 総収益</div>
+                <div id="v_new" class="m-value">¥0</div>
+            </div>
+            <div class="metric-card" id="card_diff">
+                <div class="m-label">収益インパクト (差額)</div>
+                <div id="v_diff" class="m-value">¥0</div>
+                <div id="v_delta" class="delta">-</div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-box">
+                <div class="chart-header">
+                    <h3 id="dist_title">現行区画別 調定数比率</h3>
+                </div>
+                <div class="canvas-container"><canvas id="distChart"></canvas></div>
+            </div>
+
+            <div class="chart-box">
+                <div class="chart-header">
+                    <h3 id="usage_dist_title">現行区画別 使用量比率</h3>
+                </div>
+                <div class="canvas-container"><canvas id="usageDistChart"></canvas></div>
+            </div>
+
+            <div class="chart-box">
+                <div class="chart-header">
+                    <h3>区画別 収益比較</h3>
+                </div>
+                <div class="canvas-container"><canvas id="revChart"></canvas></div>
+            </div>
+
+            <div class="chart-box">
+                <div class="chart-header">
+                    <h3 id="impact_title">区画別 収益インパクト</h3>
+                </div>
+                <div class="canvas-container"><canvas id="impactChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="trend-grid">
+            <div class="chart-box">
+                <div class="chart-header">
+                    <h3>過去1年間の使用量推移 (料金表別)</h3>
+                    <div class="toggle-container">
+                        折れ線
+                        <label class="switch">
+                            <input type="checkbox" id="trend_toggle" onchange="toggleTrendChart()">
+                            <span class="slider"></span>
+                        </label>
+                        積み上げ棒
+                    </div>
+                </div>
+                <div class="canvas-container" style="height: 400px; margin-bottom: 30px;"><canvas
+                        id="trendChart"></canvas></div>
+                <div id="trend_status"
+                    style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; display: none;">
+                    データを読み込んでいます...</div>
+            </div>
+        </div>
+
+        <div id="anomaly_container" style="display: none; margin-top: 5rem; clear: both;">
+            <details class="master-details" style="border-left: 5px solid var(--red);">
+                <summary style="background: #fef2f2;">
+                    <h3 style="color: var(--red); margin: 0; display: flex; align-items: center; gap: 15px;">
+                        ⚠️ 異常値アラート (シミュレーション結果)
+                        <div style="font-size: 0.85rem; color: var(--dark); font-weight: normal; display: flex; align-items: center; gap: 5px;"
+                            onclick="event.stopPropagation();">
+                            検知ライン:
+                            <input type="number" id="anomaly_threshold" value="20" step="1" onchange="detectAnomalies()"
+                                style="width: 60px; padding: 0.2rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; font-weight: bold;">
+                            %以上の上昇
+                        </div>
+                    </h3>
+                    <span id="anomaly_count"
+                        style="font-weight:bold; color:var(--red); font-size:0.9rem; margin-left:15px; margin-right: 15px;">0件</span>
+                </summary>
+
+                <div style="padding: 1.5rem; border-top: 1px solid var(--border); background: #fff;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                        <button class="nav-link-btn" onclick="exportAnomalyCSV()"
+                            style="padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--red); border-color: var(--red);">
+                            📥 アラート対象のみ出力 (CSV)
+                        </button>
+                    </div>
+
+                    <div id="anomaly_list" style="max-height: 250px; overflow-y: auto;">
+                    </div>
+                </div>
+            </details>
+        </div>
+
     </div>
 
-</div>
+    <script>
+        Chart.register(ChartDataLabels);
 
-<script>
-    Chart.register(ChartDataLabels);
+        const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
+        let distChartObj = null, usageDistChartObj = null, revChartObj = null, trendChartObj = null, impactChartObj = null;
+        let currentUser = null;
 
-    const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
-    let distChartObj = null, revChartObj = null, trendChartObj = null;
-    let currentUser = null;
-    
-    // 計算とCSV出力用のグローバル変数群
-    window.trendChartData = null; // トレンドグラフ用
-    window.rawBillingData = []; // DBから取得した生データ（またはデモデータ）
-    window.currentMasterRules = {}; // 選択中のプランルール
-    window.currentAnomalies = []; // アラート対象顧客
-    window.currentAllImpacts = []; // 全顧客のシミュレーション明細
-    window.currentTrendRaw = {}; // 月別トレンドの生データ保持用
-    window.isDemoMode = false; // デモモードフラグ
-    
-    const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
+        // 計算とCSV出力用のグローバル変数群
+        window.trendChartData = null; // トレンドグラフ用
+        window.rawBillingData = []; // DBから取得した生データ（またはデモデータ）
+        window.currentMasterRules = {}; // 選択中のプランルール
+        window.currentAnomalies = []; // アラート対象顧客
+        window.currentAllImpacts = []; // 全顧客のシミュレーション明細
+        window.currentTrendRaw = {}; // 月別トレンドの生データ保持用
+        window.isDemoMode = false; // デモモードフラグ
 
-    client.auth.getSession().then(({ data: { session } }) => {
-        if (!session) window.location.href = 'login.html';
-        currentUser = session.user;
-        init();
-    });
+        const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
 
-    async function logOut() {
-        await client.auth.signOut();
-        window.location.href = 'login.html';
-    }
+        client.auth.getSession().then(({ data: { session } }) => {
+            if (!session) window.location.href = 'login.html';
+            currentUser = session.user;
+            init();
+        });
 
-    function updateTierLabels() {
-        const labels = document.querySelectorAll('.tier-label');
-        labels.forEach((lbl, idx) => { lbl.innerText = idx + 1; });
-    }
+        async function logOut() {
+            await client.auth.signOut();
+            window.location.href = 'login.html';
+        }
 
-    function addTier() {
-        const tbody = document.getElementById('tier_body');
-        const finalRow = tbody.querySelector('.final-tier');
-        const newRow = document.createElement('tr');
-        newRow.className = 'tier-row';
-        newRow.innerHTML = `
+        function updateTierLabels() {
+            const labels = document.querySelectorAll('.tier-label');
+            labels.forEach((lbl, idx) => { lbl.innerText = idx + 1; });
+        }
+
+        function addTier() {
+            const tbody = document.getElementById('tier_body');
+            const finalRow = tbody.querySelector('.final-tier');
+            const newRow = document.createElement('tr');
+            newRow.className = 'tier-row';
+            newRow.innerHTML = `
             <td class="tier-label" style="text-align:center;"></td>
             <td><input type="number" class="input-limit" value="30" step="1"></td>
             <td><input type="number" class="input-price" value="500" step="1"></td>
             <td style="text-align:center;"><button class="del-btn" onclick="removeTier(this)">×</button></td>
         `;
-        tbody.insertBefore(newRow, finalRow);
-        updateTierLabels();
-    }
-
-    function removeTier(btn) {
-        const row = btn.closest('tr');
-        row.remove();
-        updateTierLabels();
-    }
-
-    // 🌟 起動時のデータチェック（DBが空ならデモモード発動）
-    async function init() {
-        const { data, error } = await client.from('price_masters').select('plan_id, plan_name');
-        const container = document.getElementById('plan_checkboxes');
-        container.innerHTML = '';
-        
-        // DBにデータがない場合はデモモードを起動
-        if (error || !data || data.length === 0) {
-            enableDemoMode();
-            return;
+            tbody.insertBefore(newRow, finalRow);
+            updateTierLabels();
         }
 
-        const unique = [...new Map(data.map(p => [String(p.plan_id), p])).values()];
-        unique.forEach((p, idx) => {
-            const label = document.createElement('label');
-            label.className = 'checkbox-item';
-            const isChecked = idx === 0 ? 'checked' : '';
-            label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" data-name="${p.plan_name}" ${isChecked}> ${p.plan_id}: ${p.plan_name}`;
-            label.querySelector('input').addEventListener('change', () => {
-                loadMasterData();
-                loadTrendData();
-            });
-            container.appendChild(label);
-        });
-        loadMasterData();
-        loadTrendData(); 
-    }
-
-    // 🌟 デモモード（テストデータ生成）
-    function enableDemoMode() {
-        window.isDemoMode = true;
-        document.getElementById('status').innerHTML = '<span style="color:var(--demo); font-weight:bold;">✨ テストデータで動作中 (デモモード)</span>';
-        
-        const container = document.getElementById('plan_checkboxes');
-        const demoPlans = [ {id: "1", name: "標準プラン(デモ)"}, {id: "2", name: "エコプラン(デモ)"} ];
-        demoPlans.forEach((p) => {
-            const label = document.createElement('label');
-            label.className = 'checkbox-item';
-            label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.id}" data-name="${p.name}" checked> <span style="color:var(--demo)">[TEST]</span> ${p.id}: ${p.name}`;
-            label.querySelector('input').addEventListener('change', () => {
-                loadMasterData();
-                loadTrendData();
-            });
-            container.appendChild(label);
-        });
-        loadMasterData();
-        loadTrendData();
-    }
-
-    async function loadMasterData() {
-        const checkboxes = document.querySelectorAll('.plan-check:checked');
-        const selectedIds = Array.from(checkboxes).map(cb => String(cb.value));
-        const container = document.getElementById('master_table_container');
-        
-        if (selectedIds.length === 0) {
-            container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; margin:0; grid-column: 1 / -1;">プランが選択されていません。</p>';
-            window.currentMasterRules = {};
-            return;
+        function removeTier(btn) {
+            const row = btn.closest('tr');
+            row.remove();
+            updateTierLabels();
         }
 
-        let planGroups = {};
-        
-        if (window.isDemoMode) {
-            const demoRules = {
-                '1': { name: '標準プラン(デモ)', tiers: [ {min_usage:0, max_usage:10, base_fee:1000, unit_price:600}, {min_usage:10.1, max_usage:99999, base_fee:1500, unit_price:550} ] },
-                '2': { name: 'エコプラン(デモ)', tiers: [ {min_usage:0, max_usage:20, base_fee:1200, unit_price:580}, {min_usage:20.1, max_usage:99999, base_fee:2000, unit_price:500} ] }
-            };
-            selectedIds.forEach(id => { if (demoRules[id]) planGroups[id] = demoRules[id]; });
-        } else {
-            const { data } = await client.from('price_masters').select('*').in('plan_id', selectedIds).order('plan_id').order('min_usage');
-            if (data) {
-                data.forEach(row => {
-                    let pid = String(row.plan_id);
-                    if (!planGroups[pid]) planGroups[pid] = { name: row.plan_name, tiers: [] };
-                    planGroups[pid].tiers.push(row);
-                });
+        // 🌟 起動時のデータチェック（DBが空ならデモモード発動）
+        async function init() {
+            const { data, error } = await client.from('price_masters').select('plan_id, plan_name');
+            const container = document.getElementById('plan_checkboxes');
+            container.innerHTML = '';
+
+            // DBにデータがない場合はデモモードを起動
+            if (error || !data || data.length === 0) {
+                enableDemoMode();
+                return;
             }
-        }
-        
-        window.currentMasterRules = planGroups;
 
-        let html = '';
-        for (const [pId, pData] of Object.entries(planGroups)) {
-            html += `<div class="plan-card">
+            const unique = [...new Map(data.map(p => [String(p.plan_id), p])).values()];
+            unique.forEach((p, idx) => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-item';
+                const isChecked = idx === 0 ? 'checked' : '';
+                label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.plan_id}" data-name="${p.plan_name}" ${isChecked}> ${p.plan_id}: ${p.plan_name}`;
+                label.querySelector('input').addEventListener('change', () => {
+                    loadMasterData();
+                    loadTrendData();
+                });
+                container.appendChild(label);
+            });
+            loadMasterData();
+            loadTrendData();
+        }
+
+        // 🌟 デモモード（テストデータ生成）
+        function enableDemoMode() {
+            window.isDemoMode = true;
+            document.getElementById('status').innerHTML = '<span style="color:var(--demo); font-weight:bold;">✨ テストデータで動作中 (デモモード)</span>';
+
+            const container = document.getElementById('plan_checkboxes');
+            const demoPlans = [{ id: "1", name: "標準プラン(デモ)" }, { id: "2", name: "エコプラン(デモ)" }];
+            demoPlans.forEach((p) => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-item';
+                label.innerHTML = `<input type="checkbox" class="plan-check" value="${p.id}" data-name="${p.name}" checked> <span style="color:var(--demo)">[TEST]</span> ${p.id}: ${p.name}`;
+                label.querySelector('input').addEventListener('change', () => {
+                    loadMasterData();
+                    loadTrendData();
+                });
+                container.appendChild(label);
+            });
+            loadMasterData();
+            loadTrendData();
+        }
+
+        async function loadMasterData() {
+            const checkboxes = document.querySelectorAll('.plan-check:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => String(cb.value));
+            const container = document.getElementById('master_table_container');
+
+            if (selectedIds.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; margin:0; grid-column: 1 / -1;">プランが選択されていません。</p>';
+                window.currentMasterRules = {};
+                return;
+            }
+
+            let planGroups = {};
+
+            if (window.isDemoMode) {
+                const demoRules = {
+                    '1': { name: '標準プラン(デモ)', tiers: [{ min_usage: 0, max_usage: 10, base_fee: 1000, unit_price: 600 }, { min_usage: 10.1, max_usage: 99999, base_fee: 1500, unit_price: 550 }] },
+                    '2': { name: 'エコプラン(デモ)', tiers: [{ min_usage: 0, max_usage: 20, base_fee: 1200, unit_price: 580 }, { min_usage: 20.1, max_usage: 99999, base_fee: 2000, unit_price: 500 }] }
+                };
+                selectedIds.forEach(id => { if (demoRules[id]) planGroups[id] = demoRules[id]; });
+            } else {
+                const { data } = await client.from('price_masters').select('*').in('plan_id', selectedIds).order('plan_id').order('min_usage');
+                if (data) {
+                    data.forEach(row => {
+                        let pid = String(row.plan_id);
+                        if (!planGroups[pid]) planGroups[pid] = { name: row.plan_name, tiers: [] };
+                        planGroups[pid].tiers.push(row);
+                    });
+                }
+            }
+
+            window.currentMasterRules = planGroups;
+
+            let html = '';
+            for (const [pId, pData] of Object.entries(planGroups)) {
+                html += `<div class="plan-card">
                         <div class="plan-card-header">${pId}: ${pData.name}</div>
                         <table class="plan-card-table">
                             <thead><tr><th>適用範囲</th><th class="num">基本料金</th><th class="num">従量単価</th></tr></thead>
                             <tbody>`;
-            pData.tiers.forEach(row => {
-                const maxU = row.max_usage >= 99999 ? '上限なし' : row.max_usage.toFixed(1) + ' m³';
-                const range = `${row.min_usage.toFixed(1)} ~ ${maxU}`;
-                html += `<tr>
+                pData.tiers.forEach(row => {
+                    const maxU = row.max_usage >= 99999 ? '上限なし' : row.max_usage.toFixed(1) + ' m³';
+                    const range = `${row.min_usage.toFixed(1)} ~ ${maxU}`;
+                    html += `<tr>
                             <td>${range}</td>
                             <td class="num">¥${row.base_fee.toLocaleString()}</td>
                             <td class="num">¥${row.unit_price.toLocaleString()}</td>
                          </tr>`;
-            });
-            html += `</tbody></table></div>`;
-        }
-        container.innerHTML = html;
-    }
-
-    async function loadTrendData() {
-        const checkboxes = document.querySelectorAll('.plan-check:checked');
-        const selectedIds = Array.from(checkboxes).map(cb => String(cb.value)); 
-        const statusEl = document.getElementById('trend_status');
-        
-        if (selectedIds.length === 0) {
-            if (trendChartObj) trendChartObj.destroy();
-            document.getElementById('anomaly_container').style.display = 'none';
-            window.rawBillingData = [];
-            return;
-        }
-
-        statusEl.style.display = 'block';
-        let allData = [];
-
-        if (window.isDemoMode) {
-            statusEl.innerText = `デモデータを生成中...`;
-            const months = ['202304','202305','202306','202307','202308','202309','202310','202311','202312','202401','202402','202403'];
-            
-            // プラン1: 100顧客分の1年データ (冬場に増える)
-            if (selectedIds.includes('1')) {
-                for(let i=1; i<=100; i++) {
-                    let mId = `1000${i.toString().padStart(4, '0')}`;
-                    let baseU = 10 + Math.random() * 20;
-                    months.forEach((ym, idx) => {
-                        let s = (idx >= 7 && idx <= 10) ? 1.5 : 1.0; 
-                        let usage = baseU * s + (Math.random() * 5);
-                        allData.push({ year_month: ym, plan_id: mId, tariff_id: '1', usage_amount: usage });
-                    });
-                }
-            }
-            // プラン2: 50顧客分の1年データ (特定の顧客にアラートを出させる仕掛け)
-            if (selectedIds.includes('2')) {
-                for(let i=1; i<=50; i++) {
-                    let mId = `2000${i.toString().padStart(4, '0')}`;
-                    let baseU = 20 + Math.random() * 30;
-                    months.forEach((ym, idx) => {
-                        let s = (idx >= 7 && idx <= 10) ? 1.3 : 1.0;
-                        let usage = baseU * s + (Math.random() * 5);
-                        if(i === 5) usage *= 3.0; // 5人目だけ極端に使用量が多い設定（値上げアラートに引っかかりやすい）
-                        allData.push({ year_month: ym, plan_id: mId, tariff_id: '2', usage_amount: usage });
-                    });
-                }
-            }
-        } else {
-            let step = 1000;
-            let start = 0;
-            let fetchMore = true;
-
-            while(fetchMore) {
-                const { data, error } = await client.from('gas_data_v3')
-                    .select('year_month, tariff_id, plan_id, usage_amount')
-                    .in('tariff_id', selectedIds)
-                    .eq('user_id', currentUser.id)
-                    .order('year_month', { ascending: true })
-                    .range(start, start + step - 1);
-
-                if (error) {
-                    statusEl.innerText = "データ取得エラーが発生しました";
-                    if (trendChartObj) trendChartObj.destroy();
-                    return;
-                }
-
-                if (data && data.length > 0) {
-                    allData = allData.concat(data);
-                    start += data.length;
-                    statusEl.innerText = `データ読込中... (${allData.length.toLocaleString()}件)`;
-                }
-
-                if (!data || data.length < step) {
-                    fetchMore = false; 
-                }
-            }
-        }
-
-        window.rawBillingData = allData;
-
-        if (!allData || allData.length === 0) {
-            statusEl.innerText = "データがありません。v3インポーターからデータを登録してください。";
-            statusEl.style.display = 'block';
-            if (trendChartObj) trendChartObj.destroy();
-            document.getElementById('anomaly_container').style.display = 'none';
-            return;
-        }
-
-        statusEl.style.display = 'none';
-
-        const aggregated = {};
-        const monthsSet = new Set();
-        
-        allData.forEach(row => {
-            const ym = row.year_month;
-            const tId = row.tariff_id;
-            const amt = parseFloat(row.usage_amount) || 0;
-            
-            monthsSet.add(ym);
-            if (!aggregated[ym]) aggregated[ym] = {};
-            if (!aggregated[ym][tId]) aggregated[ym][tId] = 0;
-            
-            aggregated[ym][tId] += amt;
-        });
-
-        const labels = Array.from(monthsSet).sort();
-        const displayLabels = labels.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6));
-
-        window.currentTrendRaw = { labels: displayLabels, data: aggregated, originalLabels: labels };
-
-        const datasets = [];
-        selectedIds.forEach((tId, idx) => {
-            const dataPoints = labels.map(ym => aggregated[ym][tId] || 0);
-            const color = PALETTE[idx % PALETTE.length];
-            
-            datasets.push({
-                label: `プラン ${tId}`,
-                data: dataPoints,
-                borderColor: color,
-                backgroundColor: color + '80', 
-                borderWidth: 2,
-                tension: 0.1, 
-                fill: false 
-            });
-        });
-
-        window.trendChartData = { labels: displayLabels, datasets: datasets };
-        renderTrendChart();
-    }
-
-    function renderTrendChart() {
-        const ctx = document.getElementById('trendChart').getContext('2d');
-        const isBar = document.getElementById('trend_toggle').checked;
-
-        if (trendChartObj) trendChartObj.destroy();
-
-        const configuredDatasets = window.trendChartData.datasets.map(ds => {
-            return { ...ds, type: isBar ? 'bar' : 'line', fill: !isBar ? false : true };
-        });
-
-        trendChartObj = new Chart(ctx, {
-            type: isBar ? 'bar' : 'line', 
-            data: { labels: window.trendChartData.labels, datasets: configuredDatasets },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { position: 'top' },
-                    datalabels: { display: false }, 
-                    tooltip: { callbacks: { label: function(c) { return (c.dataset.label || '') + ': ' + c.parsed.y.toLocaleString() + ' m³'; } } }
-                },
-                scales: {
-                    x: { stacked: isBar, grid: { display: false } },
-                    y: { stacked: isBar, beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '総使用量 (m³)', font: {size: 11} } }
-                }
-            }
-        });
-    }
-
-    function toggleTrendChart() {
-        if (window.trendChartData) renderTrendChart();
-    }
-
-    // --- CSVダウンロードの共通処理 ---
-    function triggerDownload(csvContent, fileName) {
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excelで文字化けしないためのBOM
-        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url); link.setAttribute("download", fileName);
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    }
-
-    // ① アラート対象の料金番号のみ出力
-    function exportAnomalyCSV() {
-        if (!window.currentAnomalies || window.currentAnomalies.length === 0) {
-            alert("出力するアラートデータがありません。");
-            return;
-        }
-        let csvContent = "料金番号,対象プラン,年間総使用量(m3),値上げ上昇率(%),現行料金(円),新料金(円),年間負担増額(円)\n";
-        window.currentAnomalies.forEach(a => {
-            let rate = (a.rate * 100).toFixed(1);
-            let usage = a.usageTotal.toFixed(1);
-            csvContent += `="${a.meterId}",${a.tariffId},${usage},${rate}%,${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
-        });
-        triggerDownload(csvContent, "anomaly_alert_data.csv");
-    }
-
-    // ② 全ての料金番号を出力（左ペインに移動）
-    function exportAllCSV() {
-        if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
-            alert("出力するデータがありません。シミュレーションを実行してください。");
-            return;
-        }
-        let csvContent = "料金番号,対象プラン,年間総使用量(m3),値上げ上昇率(%),現行料金(円),新料金(円),年間負担増額(円)\n";
-        window.currentAllImpacts.forEach(a => {
-            let rate = (a.rate * 100).toFixed(1);
-            let usage = a.usageTotal.toFixed(1);
-            csvContent += `="${a.meterId}",${a.tariffId},${usage},${rate}%,${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
-        });
-        triggerDownload(csvContent, "all_meters_simulation_data.csv");
-    }
-
-    // ③ 画面の情報を網羅した「総合レポート」のCSV出力（左ペイン用）
-    function exportComprehensiveCSV() {
-        if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
-            alert("シミュレーションを実行してから出力してください。");
-            return;
-        }
-
-        const now = new Date();
-        const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-        
-        let csv = `■ Gasio シミュレーション総合結果レポート,作成日時：${dateStr}\n\n`;
-
-        // 1. 前提条件（選択プランと新料金設定）
-        csv += "【シミュレーション前提条件】\n";
-        const checkboxes = document.querySelectorAll('.plan-check:checked');
-        const planNames = Array.from(checkboxes).map(cb => `${cb.value}:${cb.getAttribute('data-name')}`).join(" / ");
-        csv += `対象プラン,${planNames}\n`;
-        
-        let nBase = document.getElementById('n_base').value;
-        csv += `新・基本料金,${nBase} 円\n`;
-        
-        let limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => inp.value);
-        let prices = Array.from(document.querySelectorAll('.input-price')).map(inp => inp.value);
-        csv += "新・従量単価\n";
-        csv += "区画,上限(m3),単価(円)\n";
-        for(let i=0; i<prices.length; i++) {
-            let limitStr = i < limits.length ? `~${limits[i]}` : "それ以上";
-            csv += `区画${i+1},${limitStr},${prices[i]}\n`;
-        }
-        csv += "\n";
-
-        // 2. 全体サマリー
-        csv += "【全体サマリー（年間推定）】\n";
-        csv += `現行総収益,${document.getElementById('v_cur').innerText.replace(/¥|,/g, '')} 円\n`;
-        csv += `新料金総収益,${document.getElementById('v_new').innerText.replace(/¥|,/g, '')} 円\n`;
-        csv += `収益インパクト額,${document.getElementById('v_diff').innerText.replace(/¥|,|\+|/g, '')} 円\n`;
-        csv += `収益インパクト率,${document.getElementById('v_delta').innerText.replace(/▲|▼| /g, '')}\n\n`;
-
-        // 3. 月別・プラン別 使用量トレンド
-        csv += "【月別・プラン別 使用量トレンド(m3)】\n";
-        if(window.currentTrendRaw && window.currentTrendRaw.labels) {
-            let tLabels = window.currentTrendRaw.labels;
-            let origLabels = window.currentTrendRaw.originalLabels;
-            let tData = window.currentTrendRaw.data;
-            let pIds = Array.from(checkboxes).map(cb => cb.value);
-            
-            csv += "年月," + pIds.map(id => `プラン${id}`).join(",") + "\n";
-            for(let i=0; i<tLabels.length; i++) {
-                let ym = origLabels[i];
-                let rowStr = tLabels[i];
-                for(let pId of pIds) {
-                    let val = tData[ym] && tData[ym][pId] ? tData[ym][pId].toFixed(1) : "0.0";
-                    rowStr += `,${val}`;
-                }
-                csv += rowStr + "\n";
-            }
-        }
-        
-        triggerDownload(csv, "gasio_comprehensive_report.csv");
-    }
-
-    // --- 値上げ影響度計算・アラート判定 ---
-    function detectAnomalies() {
-        const container = document.getElementById('anomaly_container');
-        const listEl = document.getElementById('anomaly_list');
-        const countEl = document.getElementById('anomaly_count');
-        const thresholdInput = document.getElementById('anomaly_threshold');
-        const threshold = parseFloat(thresholdInput.value) / 100;
-
-        if (!window.rawBillingData || window.rawBillingData.length === 0 || Object.keys(window.currentMasterRules).length === 0) {
-            container.style.display = 'none';
-            return;
-        }
-
-        let nBase = parseFloat(document.getElementById('n_base').value);
-        let limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value));
-        let prices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value));
-
-        function getNewBill(usage) {
-            if (usage === 0) return nBase;
-            for (let i = 0; i < prices.length; i++) {
-                let maxU = i < limits.length ? limits[i] : Infinity;
-                let minU = i === 0 ? 0 : limits[i-1];
-                if (usage > minU && usage <= maxU) {
-                    return nBase + (usage * prices[i]);
-                }
-            }
-            return nBase;
-        }
-
-        function getCurBill(usage, tariffId) {
-            let plan = window.currentMasterRules[tariffId];
-            if (!plan || !plan.tiers) return 0;
-            let tiers = plan.tiers;
-            if (usage === 0) return tiers[0] ? tiers[0].base_fee : 0;
-            for (let t of tiers) {
-                let maxU = t.max_usage >= 99999 ? Infinity : t.max_usage;
-                if (usage > t.min_usage - 0.001 && usage <= maxU + 0.001) {
-                    return t.base_fee + (usage * t.unit_price);
-                }
-            }
-            return 0;
-        }
-
-        // メーターごとの年間使用量と料金を集計
-        let meterImpacts = {};
-        window.rawBillingData.forEach(row => {
-            let meterId = row.plan_id; 
-            let tariffId = row.tariff_id;
-            let usage = parseFloat(row.usage_amount) || 0;
-
-            let curBill = getCurBill(usage, tariffId);
-            let newBill = getNewBill(usage);
-
-            if (!meterImpacts[meterId]) meterImpacts[meterId] = { cur: 0, new: 0, usageTotal: 0, tariffId: tariffId };
-            meterImpacts[meterId].cur += curBill;
-            meterImpacts[meterId].new += newBill;
-            meterImpacts[meterId].usageTotal += usage; 
-        });
-
-        let allImpacts = [];
-        for (let mId in meterImpacts) {
-            let d = meterImpacts[mId];
-            if (d.cur > 0) {
-                let rate = (d.new - d.cur) / d.cur;
-                allImpacts.push({ 
-                    meterId: mId, 
-                    tariffId: d.tariffId, 
-                    usageTotal: d.usageTotal, 
-                    rate: rate, 
-                    cur: d.cur, 
-                    new: d.new, 
-                    diff: d.new - d.cur 
                 });
+                html += `</tbody></table></div>`;
             }
+            container.innerHTML = html;
         }
-        
-        // 全顧客の結果を保存
-        allImpacts.sort((a, b) => b.rate - a.rate);
-        window.currentAllImpacts = allImpacts;
 
-        // 閾値を超えるアラート対象を抽出
-        let anomalies = allImpacts.filter(a => a.rate >= threshold);
-        window.currentAnomalies = anomalies;
+        async function loadTrendData() {
+            const checkboxes = document.querySelectorAll('.plan-check:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => String(cb.value));
+            const statusEl = document.getElementById('trend_status');
 
-        if (anomalies.length > 0) {
-            let html = '<table class="anomaly-table">';
-            html += '<tr><th>料金番号 (顧客メーターID)</th><th>年間使用量(m3)</th><th>値上げ上昇率</th><th>1年間の現行料金</th><th>1年間の新料金</th><th>年間負担増額</th></tr>';
+            if (selectedIds.length === 0) {
+                if (trendChartObj) trendChartObj.destroy();
+                document.getElementById('anomaly_container').style.display = 'none';
+                window.rawBillingData = [];
+                return;
+            }
 
-            anomalies.forEach(a => {
-                let rateStr = (a.rate * 100).toFixed(1) + '%';
-                html += `<tr>
+            statusEl.style.display = 'block';
+            let allData = [];
+
+            if (window.isDemoMode) {
+                statusEl.innerText = `デモデータを生成中...`;
+                const months = ['202304', '202305', '202306', '202307', '202308', '202309', '202310', '202311', '202312', '202401', '202402', '202403'];
+
+                // プラン1: 100顧客分の1年データ (冬場に増える)
+                if (selectedIds.includes('1')) {
+                    for (let i = 1; i <= 100; i++) {
+                        let mId = `1000${i.toString().padStart(4, '0')}`;
+                        let baseU = 10 + Math.random() * 20;
+                        months.forEach((ym, idx) => {
+                            let s = (idx >= 7 && idx <= 10) ? 1.5 : 1.0;
+                            let usage = baseU * s + (Math.random() * 5);
+                            allData.push({ year_month: ym, plan_id: mId, tariff_id: '1', usage_amount: usage });
+                        });
+                    }
+                }
+                // プラン2: 50顧客分の1年データ (特定の顧客にアラートを出させる仕掛け)
+                if (selectedIds.includes('2')) {
+                    for (let i = 1; i <= 50; i++) {
+                        let mId = `2000${i.toString().padStart(4, '0')}`;
+                        let baseU = 20 + Math.random() * 30;
+                        months.forEach((ym, idx) => {
+                            let s = (idx >= 7 && idx <= 10) ? 1.3 : 1.0;
+                            let usage = baseU * s + (Math.random() * 5);
+                            if (i === 5) usage *= 3.0; // 5人目だけ極端に使用量が多い設定（値上げアラートに引っかかりやすい）
+                            allData.push({ year_month: ym, plan_id: mId, tariff_id: '2', usage_amount: usage });
+                        });
+                    }
+                }
+            } else {
+                let step = 1000;
+                let start = 0;
+                let fetchMore = true;
+
+                while (fetchMore) {
+                    const { data, error } = await client.from('gas_data_v3')
+                        .select('year_month, tariff_id, plan_id, usage_amount')
+                        .in('tariff_id', selectedIds)
+                        .eq('user_id', currentUser.id)
+                        .order('year_month', { ascending: true })
+                        .range(start, start + step - 1);
+
+                    if (error) {
+                        statusEl.innerText = "データ取得エラーが発生しました";
+                        if (trendChartObj) trendChartObj.destroy();
+                        return;
+                    }
+
+                    if (data && data.length > 0) {
+                        allData = allData.concat(data);
+                        start += data.length;
+                        statusEl.innerText = `データ読込中... (${allData.length.toLocaleString()}件)`;
+                    }
+
+                    if (!data || data.length < step) {
+                        fetchMore = false;
+                    }
+                }
+            }
+
+            window.rawBillingData = allData;
+
+            if (!allData || allData.length === 0) {
+                statusEl.innerText = "データがありません。v3インポーターからデータを登録してください。";
+                statusEl.style.display = 'block';
+                if (trendChartObj) trendChartObj.destroy();
+                document.getElementById('anomaly_container').style.display = 'none';
+                return;
+            }
+
+            statusEl.style.display = 'none';
+
+            const aggregated = {};
+            const monthsSet = new Set();
+
+            allData.forEach(row => {
+                const ym = row.year_month;
+                const tId = row.tariff_id;
+                const amt = parseFloat(row.usage_amount) || 0;
+
+                monthsSet.add(ym);
+                if (!aggregated[ym]) aggregated[ym] = {};
+                if (!aggregated[ym][tId]) aggregated[ym][tId] = 0;
+
+                aggregated[ym][tId] += amt;
+            });
+
+            const labels = Array.from(monthsSet).sort();
+            const displayLabels = labels.map(ym => ym.substring(0, 4) + '/' + ym.substring(4, 6));
+
+            window.currentTrendRaw = { labels: displayLabels, data: aggregated, originalLabels: labels };
+
+            const datasets = [];
+            selectedIds.forEach((tId, idx) => {
+                const dataPoints = labels.map(ym => aggregated[ym][tId] || 0);
+                const color = PALETTE[idx % PALETTE.length];
+
+                datasets.push({
+                    label: `プラン ${tId}`,
+                    data: dataPoints,
+                    borderColor: color,
+                    backgroundColor: color + '80',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: false
+                });
+            });
+
+            window.trendChartData = { labels: displayLabels, datasets: datasets };
+            renderTrendChart();
+        }
+
+        function renderTrendChart() {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            const isBar = document.getElementById('trend_toggle').checked;
+
+            if (trendChartObj) trendChartObj.destroy();
+
+            const configuredDatasets = window.trendChartData.datasets.map(ds => {
+                return { ...ds, type: isBar ? 'bar' : 'line', fill: !isBar ? false : true };
+            });
+
+            trendChartObj = new Chart(ctx, {
+                type: isBar ? 'bar' : 'line',
+                data: { labels: window.trendChartData.labels, datasets: configuredDatasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top' },
+                        datalabels: { display: false },
+                        tooltip: { callbacks: { label: function (c) { return (c.dataset.label || '') + ': ' + c.parsed.y.toLocaleString() + ' m³'; } } }
+                    },
+                    scales: {
+                        x: { stacked: isBar, grid: { display: false } },
+                        y: { stacked: isBar, beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '総使用量 (m³)', font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function toggleTrendChart() {
+            if (window.trendChartData) renderTrendChart();
+        }
+
+        // --- CSVダウンロードの共通処理 ---
+        function triggerDownload(csvContent, fileName) {
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excelで文字化けしないためのBOM
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url); link.setAttribute("download", fileName);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        // ① アラート対象の料金番号のみ出力
+        function exportAnomalyCSV() {
+            if (!window.currentAnomalies || window.currentAnomalies.length === 0) {
+                alert("出力するアラートデータがありません。");
+                return;
+            }
+            let csvContent = "料金番号,対象プラン,年間総使用量(m3),値上げ上昇率(%),現行料金(円),新料金(円),年間負担増額(円)\n";
+            window.currentAnomalies.forEach(a => {
+                let rate = (a.rate * 100).toFixed(1);
+                let usage = a.usageTotal.toFixed(1);
+                csvContent += `="${a.meterId}",${a.tariffId},${usage},${rate}%,${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
+            });
+            triggerDownload(csvContent, "anomaly_alert_data.csv");
+        }
+
+        // ② 全ての料金番号を出力（左ペインに移動）
+        function exportAllCSV() {
+            if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
+                alert("出力するデータがありません。シミュレーションを実行してください。");
+                return;
+            }
+            let csvContent = "料金番号,対象プラン,年間総使用量(m3),値上げ上昇率(%),現行料金(円),新料金(円),年間負担増額(円)\n";
+            window.currentAllImpacts.forEach(a => {
+                let rate = (a.rate * 100).toFixed(1);
+                let usage = a.usageTotal.toFixed(1);
+                csvContent += `="${a.meterId}",${a.tariffId},${usage},${rate}%,${Math.round(a.cur)},${Math.round(a.new)},${Math.round(a.diff)}\n`;
+            });
+            triggerDownload(csvContent, "all_meters_simulation_data.csv");
+        }
+
+        // ③ 画面の情報を網羅した「総合レポート」のCSV出力（左ペイン用）
+        function exportComprehensiveCSV() {
+            if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
+                alert("シミュレーションを実行してから出力してください。");
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+            let csv = `■ Gasio シミュレーション総合結果レポート,作成日時：${dateStr}\n\n`;
+
+            // 1. 前提条件（選択プランと新料金設定）
+            csv += "【シミュレーション前提条件】\n";
+            const checkboxes = document.querySelectorAll('.plan-check:checked');
+            const planNames = Array.from(checkboxes).map(cb => `${cb.value}:${cb.getAttribute('data-name')}`).join(" / ");
+            csv += `対象プラン,${planNames}\n`;
+
+            let nBase = document.getElementById('n_base').value;
+            csv += `新・基本料金,${nBase} 円\n`;
+
+            let limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => inp.value);
+            let prices = Array.from(document.querySelectorAll('.input-price')).map(inp => inp.value);
+            csv += "新・従量単価\n";
+            csv += "区画,上限(m3),単価(円)\n";
+            for (let i = 0; i < prices.length; i++) {
+                let limitStr = i < limits.length ? `~${limits[i]}` : "それ以上";
+                csv += `区画${i + 1},${limitStr},${prices[i]}\n`;
+            }
+            csv += "\n";
+
+            // 2. 全体サマリー
+            csv += "【全体サマリー（年間推定）】\n";
+            csv += `現行総収益,${document.getElementById('v_cur').innerText.replace(/¥|,/g, '')} 円\n`;
+            csv += `新料金総収益,${document.getElementById('v_new').innerText.replace(/¥|,/g, '')} 円\n`;
+            csv += `収益インパクト額,${document.getElementById('v_diff').innerText.replace(/¥|,|\+|/g, '')} 円\n`;
+            csv += `収益インパクト率,${document.getElementById('v_delta').innerText.replace(/▲|▼| /g, '')}\n\n`;
+
+            // 3. 月別・プラン別 使用量トレンド
+            csv += "【月別・プラン別 使用量トレンド(m3)】\n";
+            if (window.currentTrendRaw && window.currentTrendRaw.labels) {
+                let tLabels = window.currentTrendRaw.labels;
+                let origLabels = window.currentTrendRaw.originalLabels;
+                let tData = window.currentTrendRaw.data;
+                let pIds = Array.from(checkboxes).map(cb => cb.value);
+
+                csv += "年月," + pIds.map(id => `プラン${id}`).join(",") + "\n";
+                for (let i = 0; i < tLabels.length; i++) {
+                    let ym = origLabels[i];
+                    let rowStr = tLabels[i];
+                    for (let pId of pIds) {
+                        let val = tData[ym] && tData[ym][pId] ? tData[ym][pId].toFixed(1) : "0.0";
+                        rowStr += `,${val}`;
+                    }
+                    csv += rowStr + "\n";
+                }
+            }
+
+            triggerDownload(csv, "gasio_comprehensive_report.csv");
+        }
+
+        // --- 値上げ影響度計算・アラート判定 ---
+        function detectAnomalies() {
+            const container = document.getElementById('anomaly_container');
+            const listEl = document.getElementById('anomaly_list');
+            const countEl = document.getElementById('anomaly_count');
+            const thresholdInput = document.getElementById('anomaly_threshold');
+            const threshold = parseFloat(thresholdInput.value) / 100;
+
+            if (!window.rawBillingData || window.rawBillingData.length === 0 || Object.keys(window.currentMasterRules).length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            let nBase = parseFloat(document.getElementById('n_base').value);
+            let limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value));
+            let prices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value));
+
+            function getNewBill(usage) {
+                if (usage === 0) return nBase;
+                for (let i = 0; i < prices.length; i++) {
+                    let maxU = i < limits.length ? limits[i] : Infinity;
+                    let minU = i === 0 ? 0 : limits[i - 1];
+                    if (usage > minU && usage <= maxU) {
+                        return nBase + (usage * prices[i]);
+                    }
+                }
+                return nBase;
+            }
+
+            function getCurBill(usage, tariffId) {
+                let plan = window.currentMasterRules[tariffId];
+                if (!plan || !plan.tiers) return 0;
+                let tiers = plan.tiers;
+                if (usage === 0) return tiers[0] ? tiers[0].base_fee : 0;
+                for (let t of tiers) {
+                    let maxU = t.max_usage >= 99999 ? Infinity : t.max_usage;
+                    if (usage > t.min_usage - 0.001 && usage <= maxU + 0.001) {
+                        return t.base_fee + (usage * t.unit_price);
+                    }
+                }
+                return 0;
+            }
+
+            // メーターごとの年間使用量と料金を集計
+            let meterImpacts = {};
+            window.rawBillingData.forEach(row => {
+                let meterId = row.plan_id;
+                let tariffId = row.tariff_id;
+                let usage = parseFloat(row.usage_amount) || 0;
+
+                let curBill = getCurBill(usage, tariffId);
+                let newBill = getNewBill(usage);
+
+                if (!meterImpacts[meterId]) meterImpacts[meterId] = { cur: 0, new: 0, usageTotal: 0, tariffId: tariffId };
+                meterImpacts[meterId].cur += curBill;
+                meterImpacts[meterId].new += newBill;
+                meterImpacts[meterId].usageTotal += usage;
+            });
+
+            let allImpacts = [];
+            for (let mId in meterImpacts) {
+                let d = meterImpacts[mId];
+                if (d.cur > 0) {
+                    let rate = (d.new - d.cur) / d.cur;
+                    allImpacts.push({
+                        meterId: mId,
+                        tariffId: d.tariffId,
+                        usageTotal: d.usageTotal,
+                        rate: rate,
+                        cur: d.cur,
+                        new: d.new,
+                        diff: d.new - d.cur
+                    });
+                }
+            }
+
+            // 全顧客の結果を保存
+            allImpacts.sort((a, b) => b.rate - a.rate);
+            window.currentAllImpacts = allImpacts;
+
+            // 閾値を超えるアラート対象を抽出
+            let anomalies = allImpacts.filter(a => a.rate >= threshold);
+            window.currentAnomalies = anomalies;
+
+            if (anomalies.length > 0) {
+                let html = '<table class="anomaly-table">';
+                html += '<tr><th>料金番号 (顧客メーターID)</th><th>年間使用量(m3)</th><th>値上げ上昇率</th><th>1年間の現行料金</th><th>1年間の新料金</th><th>年間負担増額</th></tr>';
+
+                anomalies.forEach(a => {
+                    let rateStr = (a.rate * 100).toFixed(1) + '%';
+                    html += `<tr>
                     <td style="font-family:monospace; font-weight:bold; font-size:1rem;">${a.meterId}</td>
                     <td>${a.usageTotal.toFixed(1)}</td>
                     <td><span class="badge-up">⬆️ ${rateStr} アップ</span></td>
@@ -759,198 +1210,322 @@
                     <td><b>¥${Math.round(a.new).toLocaleString()}</b></td>
                     <td style="color:var(--red); font-weight:bold;">+¥${Math.round(a.diff).toLocaleString()}</td>
                 </tr>`;
-            });
-            html += '</table>';
+                });
+                html += '</table>';
 
-            listEl.innerHTML = html;
-            countEl.innerText = `${anomalies.length}件の大幅値上げ顧客を検知`;
-            container.style.display = 'block';
-        } else {
-            listEl.innerHTML = '<p style="padding:1rem; color:var(--text-muted); font-weight:bold;">✅ 設定した基準を超える値上げになる料金番号はありません。安全なシミュレーション結果です。</p>';
-            countEl.innerText = '0件';
-            container.style.display = 'block';
+                listEl.innerHTML = html;
+                countEl.innerText = `${anomalies.length}件の大幅値上げ顧客を検知`;
+                container.style.display = 'block';
+            } else {
+                listEl.innerHTML = '<p style="padding:1rem; color:var(--text-muted); font-weight:bold;">✅ 設定した基準を超える値上げになる料金番号はありません。安全なシミュレーション結果です。</p>';
+                countEl.innerText = '0件';
+                container.style.display = 'block';
+            }
         }
-    }
 
-    // 🌟 完全フロントエンド移行版のシミュレーション実行ロジック
-    async function runSim() {
-        const btn = document.getElementById('run_btn');
-        const status = document.getElementById('status');
-        const checkboxes = document.querySelectorAll('.plan-check:checked');
-        const selectedIds = Array.from(checkboxes).map(cb => String(cb.value));
-        
-        if (selectedIds.length === 0) { alert("プランを選択してください。"); return; }
-        if (!window.rawBillingData || window.rawBillingData.length === 0) { alert("データがありません。"); return; }
+        // 🌟 完全フロントエンド移行版のシミュレーション実行ロジック
+        async function runSim() {
+            const btn = document.getElementById('run_btn');
+            const status = document.getElementById('status');
+            const checkboxes = document.querySelectorAll('.plan-check:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => String(cb.value));
 
-        const nBase = parseFloat(document.getElementById('n_base').value);
-        const limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value));
-        const prices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value));
+            if (selectedIds.length === 0) { alert("プランを選択してください。"); return; }
+            if (!window.rawBillingData || window.rawBillingData.length === 0) { alert("データがありません。"); return; }
 
-        btn.innerText = "計算中..."; status.innerText = "Processing...";
+            const nBase = parseFloat(document.getElementById('n_base').value);
+            const limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value));
+            const prices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value));
 
-        // UIが固まらないように少し遅延させて計算を実行
-        setTimeout(() => {
-            let curTotal = 0, newTotal = 0;
-            let cTierMap = {}; let cTierSort = {}; let planTotalDist = {}; let nTierMap = {};
+            btn.innerText = "計算中..."; status.innerText = "Processing...";
 
-            window.rawBillingData.forEach(row => {
-                let usage = parseFloat(row.usage_amount) || 0;
-                let tId = String(row.tariff_id);
-                
-                // 現行計算
-                let curBill = 0;
-                let cTierName = "区画A"; // 0m³はデフォルトでA区画に分類
-                let cSortKey = 1;
-                let plan = window.currentMasterRules[tId];
-                if (plan && plan.tiers) {
+            // UIが固まらないように少し遅延させて計算を実行
+            setTimeout(() => {
+                let curTotal = 0, newTotal = 0;
+                let cTierMap = {}; let cTierSort = {}; let planTotalDist = {}; let nTierMap = {};
+                let cTierUsageMap = {}; let planTotalUsage = {};
+
+                window.rawBillingData.forEach(row => {
+                    let usage = parseFloat(row.usage_amount) || 0;
+                    let tId = String(row.tariff_id);
+
+                    // 現行計算
+                    let curBill = 0;
+                    let cTierName = "区画A"; // 0m³はデフォルトでA区画に分類
+                    let cSortKey = 1;
+                    let plan = window.currentMasterRules[tId];
+                    if (plan && plan.tiers) {
+                        if (usage === 0) {
+                            curBill = plan.tiers[0] ? plan.tiers[0].base_fee : 0;
+                        } else {
+                            for (let i = 0; i < plan.tiers.length; i++) {
+                                let tier = plan.tiers[i];
+                                let maxU = tier.max_usage >= 99999 ? Infinity : tier.max_usage;
+                                if (usage > tier.min_usage - 0.001 && usage <= maxU + 0.001) {
+                                    curBill = tier.base_fee + (usage * tier.unit_price);
+                                    // 0=A, 1=B, 2=C... とアルファベットに自動変換
+                                    cTierName = `区画${String.fromCharCode(65 + i)}`;
+                                    cSortKey = i + 1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // 新料金計算
+                    let newBill = nBase;
+                    let nTierName = "区画A"; // 0m³はデフォルトでA区画に分類
+                    let nSortKey = 1;
                     if (usage === 0) {
-                        curBill = plan.tiers[0] ? plan.tiers[0].base_fee : 0;
+                        newBill = nBase;
                     } else {
-                        for (let i=0; i<plan.tiers.length; i++) {
-                            let tier = plan.tiers[i];
-                            let maxU = tier.max_usage >= 99999 ? Infinity : tier.max_usage;
-                            if (usage > tier.min_usage - 0.001 && usage <= maxU + 0.001) {
-                                curBill = tier.base_fee + (usage * tier.unit_price);
-                                // 0=A, 1=B, 2=C... とアルファベットに自動変換
-                                cTierName = `区画${String.fromCharCode(65 + i)}`; 
-                                cSortKey = i+1;
+                        for (let i = 0; i < prices.length; i++) {
+                            let maxU = i < limits.length ? limits[i] : Infinity;
+                            let minU = i === 0 ? 0 : limits[i - 1];
+                            if (usage > minU && usage <= maxU) {
+                                newBill = nBase + (usage * prices[i]);
+                                // こちらもアルファベットに自動変換
+                                nTierName = `区画${String.fromCharCode(65 + i)}`;
+                                nSortKey = i + 1;
                                 break;
                             }
                         }
                     }
+
+                    curTotal += curBill;
+                    newTotal += newBill;
+
+                    if (cTierMap[cTierName] === undefined) { cTierMap[cTierName] = 0; cTierSort[cTierName] = cSortKey; }
+                    cTierMap[cTierName] += 1;
+                    if (cTierUsageMap[cTierName] === undefined) cTierUsageMap[cTierName] = 0;
+                    cTierUsageMap[cTierName] += usage;
+
+                    if (planTotalDist[tId] === undefined) planTotalDist[tId] = 0;
+                    planTotalDist[tId] += 1;
+                    if (planTotalUsage[tId] === undefined) planTotalUsage[tId] = 0;
+                    planTotalUsage[tId] += usage;
+
+                    if (nTierMap[nTierName] === undefined) { nTierMap[nTierName] = { cur: 0, new: 0, sort: nSortKey }; }
+                    nTierMap[nTierName].cur += curBill;
+                    nTierMap[nTierName].new += newBill;
+                });
+
+                // UI反映
+                const diff = newTotal - curTotal;
+                const delta = curTotal > 0 ? (diff / curTotal) * 100 : 0;
+
+                document.getElementById('v_cur').innerText = "¥" + Math.round(curTotal).toLocaleString();
+                document.getElementById('v_new').innerText = "¥" + Math.round(newTotal).toLocaleString();
+                document.getElementById('v_diff').innerText = (diff >= 0 ? "+¥" : "¥") + Math.round(diff).toLocaleString();
+
+                const deltaEl = document.getElementById('v_delta');
+                deltaEl.innerHTML = (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta).toFixed(2) + "%";
+                deltaEl.className = "delta " + (delta >= 0 ? "plus" : "minus");
+                document.getElementById('card_diff').style.borderLeftColor = delta >= 0 ? 'var(--green)' : 'var(--red)';
+
+                // グラフ描画
+                const ctx1 = document.getElementById('distChart').getContext('2d');
+                if (distChartObj) distChartObj.destroy();
+
+                const sortedCTiers = Object.keys(cTierMap).sort((a, b) => cTierSort[a] - cTierSort[b]);
+                const distData = sortedCTiers.map(t => cTierMap[t]);
+                const bgColors = sortedCTiers.map((_, i) => PALETTE[i % PALETTE.length]);
+
+                if (selectedIds.length === 1) {
+                    document.getElementById('dist_title').innerText = "現行区画別 調定数比率";
+                    distChartObj = new Chart(ctx1, {
+                        type: 'doughnut',
+                        data: { labels: sortedCTiers, datasets: [{ data: distData, backgroundColor: bgColors, borderWidth: 2, borderColor: '#fff' }] },
+                        options: {
+                            responsive: true, maintainAspectRatio: false, cutout: '65%',
+                            plugins: {
+                                legend: { position: 'right' },
+                                datalabels: {
+                                    formatter: (value, ctx) => {
+                                        let sum = 0;
+                                        ctx.chart.data.datasets[0].data.map(d => { sum += d; });
+                                        return (value * 100 / sum).toFixed(1) + "%";
+                                    },
+                                    color: '#fff', font: { weight: 'bold', size: 12 },
+                                    backgroundColor: 'rgba(0, 0, 0, 0.4)', borderRadius: 4, padding: 4
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    document.getElementById('dist_title').innerText = "プラン別 調定数";
+                    const pLabels = Object.keys(planTotalDist).map(p => `Plan ${p}`);
+                    const dataTotal = Object.values(planTotalDist);
+                    distChartObj = new Chart(ctx1, {
+                        type: 'bar',
+                        data: { labels: pLabels, datasets: [{ label: '調定数', data: dataTotal, backgroundColor: '#3498db', borderRadius: 4 }] },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            scales: {
+                                x: { grid: { display: false } },
+                                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '調定数 (件)', font: { size: 11 } } }
+                            },
+                            plugins: { legend: { display: false }, datalabels: { display: false } }
+                        }
+                    });
+
                 }
 
-                // 新料金計算
-                let newBill = nBase;
-                let nTierName = "区画A"; // 0m³はデフォルトでA区画に分類
-                let nSortKey = 1;
-                if (usage === 0) {
-                    newBill = nBase;
+                // --- 使用量比率グラフの描画（ここから追加） ---
+                const ctxUsage = document.getElementById('usageDistChart').getContext('2d');
+                if (usageDistChartObj) usageDistChartObj.destroy();
+
+                const usageDistData = sortedCTiers.map(t => cTierUsageMap[t] || 0);
+
+                if (selectedIds.length === 1) {
+                    document.getElementById('usage_dist_title').innerText = "現行区画別 使用量比率";
+                    usageDistChartObj = new Chart(ctxUsage, {
+                        type: 'doughnut',
+                        data: {
+                            labels: sortedCTiers,
+                            datasets: [{
+                                data: usageDistData,
+                                backgroundColor: bgColors,
+                                borderWidth: 2,
+                                borderColor: '#fff'
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            cutout: '65%',
+                            plugins: {
+                                legend: { position: 'right' },
+                                datalabels: {
+                                    formatter: (value, ctx) => {
+                                        let sum = 0;
+                                        ctx.chart.data.datasets[0].data.map(d => { sum += d; });
+                                        return (value * 100 / sum).toFixed(1) + "%";
+                                    },
+                                    color: '#fff', font: { weight: 'bold', size: 12 },
+                                    backgroundColor: 'rgba(0, 0, 0, 0.4)', borderRadius: 4, padding: 4
+                                },
+                                tooltip: { callbacks: { label: (c) => c.label + ': ' + c.parsed.toLocaleString() + ' m³' } }
+                            }
+                        }
+                    });
                 } else {
-                    for (let i = 0; i < prices.length; i++) {
-                        let maxU = i < limits.length ? limits[i] : Infinity;
-                        let minU = i === 0 ? 0 : limits[i-1];
-                        if (usage > minU && usage <= maxU) {
-                            newBill = nBase + (usage * prices[i]);
-                            // こちらもアルファベットに自動変換
-                            nTierName = `区画${String.fromCharCode(65 + i)}`; 
-                            nSortKey = i+1;
-                            break;
+                    // 複数プラン選択時は棒グラフを表示
+                    document.getElementById('usage_dist_title').innerText = "プラン別 総使用量";
+                    const pUsageLabels = Object.keys(planTotalUsage).map(p => `Plan ${p}`);
+                    const usageDataTotal = Object.values(planTotalUsage);
+                    usageDistChartObj = new Chart(ctxUsage, {
+                        type: 'bar',
+                        data: { labels: pUsageLabels, datasets: [{ label: '総使用量(m³)', data: usageDataTotal, backgroundColor: '#2ecc71', borderRadius: 4 }] },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, datalabels: { display: false } },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: { display: true, text: 'm³' },
+                                    grid: { color: '#f1f5f9' } // 横線は薄く残すと見やすい
+                                },
+                                x: {
+                                    grid: { display: false } // ← これで縦線が消える！
+                                }
+                            }
+                        }
+                    });
+                }
+                // --- 使用量比率グラフの描画（ここまで） ---
+
+                const ctx2 = document.getElementById('revChart').getContext('2d');
+                if (revChartObj) revChartObj.destroy();
+
+                const sortedNTiers = Object.keys(nTierMap).sort((a, b) => nTierMap[a].sort - nTierMap[b].sort);
+                const curRevs = sortedNTiers.map(t => nTierMap[t].cur);
+                const newRevs = sortedNTiers.map(t => nTierMap[t].new);
+
+                revChartObj = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedNTiers,
+                        datasets: [
+                            { label: '現行', data: curRevs, backgroundColor: '#95a5a6', borderRadius: 4 },
+                            { label: '新料金', data: newRevs, backgroundColor: '#e67e22', borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' }, datalabels: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '収益 (円)', font: { size: 11 } } },
+                            x: { grid: { display: false } }
                         }
                     }
-                }
-                
-                curTotal += curBill;
-                newTotal += newBill;
-
-                if (cTierMap[cTierName] === undefined) { cTierMap[cTierName] = 0; cTierSort[cTierName] = cSortKey; }
-                cTierMap[cTierName] += 1;
-
-                if (planTotalDist[tId] === undefined) planTotalDist[tId] = 0;
-                planTotalDist[tId] += 1;
-
-                if (nTierMap[nTierName] === undefined) { nTierMap[nTierName] = { cur: 0, new: 0, sort: nSortKey }; }
-                nTierMap[nTierName].cur += curBill;
-                nTierMap[nTierName].new += newBill;
-            });
-
-            // UI反映
-            const diff = newTotal - curTotal;
-            const delta = curTotal > 0 ? (diff / curTotal) * 100 : 0;
-
-            document.getElementById('v_cur').innerText = "¥" + Math.round(curTotal).toLocaleString();
-            document.getElementById('v_new').innerText = "¥" + Math.round(newTotal).toLocaleString();
-            document.getElementById('v_diff').innerText = (diff >= 0 ? "+¥" : "¥") + Math.round(diff).toLocaleString();
-            
-            const deltaEl = document.getElementById('v_delta');
-            deltaEl.innerHTML = (delta >= 0 ? "▲ " : "▼ ") + Math.abs(delta).toFixed(2) + "%";
-            deltaEl.className = "delta " + (delta >= 0 ? "plus" : "minus");
-            document.getElementById('card_diff').style.borderLeftColor = delta >= 0 ? 'var(--green)' : 'var(--red)';
-
-            // グラフ描画
-            const ctx1 = document.getElementById('distChart').getContext('2d');
-            if (distChartObj) distChartObj.destroy();
-            
-            const sortedCTiers = Object.keys(cTierMap).sort((a, b) => cTierSort[a] - cTierSort[b]);
-            const distData = sortedCTiers.map(t => cTierMap[t]);
-            const bgColors = sortedCTiers.map((_, i) => PALETTE[i % PALETTE.length]);
-
-            if (selectedIds.length === 1) {
-                document.getElementById('dist_title').innerText = "現行区画別 調定数比率";
-                distChartObj = new Chart(ctx1, {
-                    type: 'doughnut',
-                    data: { labels: sortedCTiers, datasets: [{ data: distData, backgroundColor: bgColors, borderWidth: 2, borderColor: '#fff' }] },
-                    options: { 
-                        responsive: true, maintainAspectRatio: false, cutout: '65%', 
-                        plugins: { 
-                            legend: { position: 'right' },
-                            datalabels: {
-                                formatter: (value, ctx) => {
-                                    let sum = 0;
-                                    ctx.chart.data.datasets[0].data.map(d => { sum += d; });
-                                    return (value * 100 / sum).toFixed(1) + "%";
-                                },
-                                color: '#fff', font: { weight: 'bold', size: 12 },
-                                backgroundColor: 'rgba(0, 0, 0, 0.4)', borderRadius: 4, padding: 4
-                            }
-                        } 
-                    }
                 });
-            } else {
-                document.getElementById('dist_title').innerText = "プラン別 調定数";
-                const pLabels = Object.keys(planTotalDist).map(p => `Plan ${p}`);
-                const dataTotal = Object.values(planTotalDist);
-                distChartObj = new Chart(ctx1, {
+
+                // --- 収益インパクトグラフの描画（ここから追加） ---
+                const ctxImpact = document.getElementById('impactChart').getContext('2d');
+                if (impactChartObj) impactChartObj.destroy();
+
+                // 区画ごとの「新料金 - 旧料金」の差額を計算
+                const impactData = sortedNTiers.map(t => nTierMap[t].new - nTierMap[t].cur);
+
+                // 増額なら赤系、減額なら青系の色を自動設定
+                const impactColors = impactData.map(val => val >= 0 ? 'rgba(231, 76, 60, 0.7)' : 'rgba(52, 152, 219, 0.7)');
+
+                impactChartObj = new Chart(ctxImpact, {
                     type: 'bar',
-                    data: { labels: pLabels, datasets: [{ label: '調定数', data: dataTotal, backgroundColor: '#3498db', borderRadius: 4 }] },
-                    options: { 
-                        responsive: true, maintainAspectRatio: false, 
-                        scales: { 
-                            x: { grid: { display: false } }, 
-                            y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '調定数 (件)', font: {size: 11} } } 
+                    data: {
+                        labels: sortedNTiers,
+                        datasets: [{
+                            label: '収益増減額 (円)',
+                            data: impactData,
+                            backgroundColor: impactColors,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            datalabels: {
+                                display: true,
+                                anchor: 'end',
+                                align: 'top',
+                                formatter: (val) => {
+                                    // Math.round() で四捨五入して整数にし、toLocaleStringでカンマ区切りにする
+                                    const integerVal = Math.round(val);
+                                    return (integerVal >= 0 ? '+' : '') + integerVal.toLocaleString();
+                                },
+                                font: {
+                                    size: 13,          // ← サイズを10から13にアップ
+                                    weight: 'bold'
+                                },
+                                offset: 4              // ← 棒との隙間を少し空ける
+                            }
                         },
-                        plugins: { legend: { display: false }, datalabels: { display: false } }
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#f1f5f9' },
+                                title: { display: true, text: '増減額 (円)', font: { size: 11 } }
+                            },
+                            x: { grid: { display: false } }
+                        }
                     }
                 });
-            }
+                // --- 収益インパクトグラフの描画（ここまで） ---
 
-            const ctx2 = document.getElementById('revChart').getContext('2d');
-            if (revChartObj) revChartObj.destroy();
-            
-            const sortedNTiers = Object.keys(nTierMap).sort((a, b) => nTierMap[a].sort - nTierMap[b].sort);
-            const curRevs = sortedNTiers.map(t => nTierMap[t].cur);
-            const newRevs = sortedNTiers.map(t => nTierMap[t].new);
+                detectAnomalies();
 
-            revChartObj = new Chart(ctx2, {
-                type: 'bar',
-                data: { 
-                    labels: sortedNTiers, 
-                    datasets: [
-                        { label: '現行', data: curRevs, backgroundColor: '#95a5a6', borderRadius: 4 }, 
-                        { label: '新料金', data: newRevs, backgroundColor: '#e67e22', borderRadius: 4 }
-                    ] 
-                },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, 
-                    plugins: { legend: { position: 'top' }, datalabels: { display: false } },
-                    scales: { 
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '収益 (円)', font: {size: 11} } }, 
-                        x: { grid: { display: false } } 
-                    }
-                }
-            });
+                btn.innerText = "シミュレーション実行";
+                status.innerHTML = window.isDemoMode
+                    ? "<span style='color:var(--demo); font-weight:bold;'>✨ デモデータでシミュレーション完了</span>"
+                    : "✓ 完了";
 
-            detectAnomalies();
+            }, 50); // UIの描画が固まらないように50ms遅延
+        }
 
-            btn.innerText = "シミュレーション実行"; 
-            status.innerHTML = window.isDemoMode 
-                ? "<span style='color:var(--demo); font-weight:bold;'>✨ デモデータでシミュレーション完了</span>" 
-                : "✓ 完了";
-
-        }, 50); // UIの描画が固まらないように50ms遅延
-    }
-
-    document.getElementById('run_btn').addEventListener('click', runSim);
-</script>
+        document.getElementById('run_btn').addEventListener('click', runSim);
+    </script>
 </body>
+
 </html>
