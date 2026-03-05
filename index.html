@@ -1472,10 +1472,20 @@
                 if (selectedIds.length === 1) {
                     document.getElementById('usage_dist_title').innerText = "現行区画別 使用量比率";
                     usageDistChartObj = new Chart(ctxUsage, {
-                        type: 'pie',
-                        data: { labels: sortedCTiers, datasets: [{ data: usageDistData, backgroundColor: bgColors, borderWidth: 2, borderColor: '#fff' }] },
+                        type: 'doughnut', // 1に合わせてdoughnutに固定
+                        data: {
+                            labels: sortedCTiers,
+                            datasets: [{
+                                data: usageDistData,
+                                backgroundColor: bgColors,
+                                borderWidth: 2,
+                                borderColor: '#fff'
+                            }]
+                        },
                         options: {
-                            responsive: true, maintainAspectRatio: false,
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '65%', // 1と同じドーナツの太さに設定
                             plugins: {
                                 legend: { position: 'right' },
                                 datalabels: {
@@ -1484,10 +1494,20 @@
                                         ctx.chart.data.datasets[0].data.map(d => { sum += d; });
                                         return (value * 100 / sum).toFixed(1) + "%";
                                     },
-                                    color: '#fff', font: { weight: 'bold', size: 12 },
-                                    backgroundColor: 'rgba(0, 0, 0, 0.4)', borderRadius: 4, padding: 4
+                                    color: '#fff',
+                                    font: { weight: 'bold', size: 12 },
+                                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                    borderRadius: 4,
+                                    padding: 4
                                 },
-                                tooltip: { callbacks: { label: function (c) { return c.label + ': ' + c.parsed.toLocaleString() + ' m³'; } } }
+                                // 使用量なので単位 (m³) を追加
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (c) {
+                                            return c.label + ': ' + c.parsed.toLocaleString() + ' m³';
+                                        }
+                                    }
+                                }
                             }
                         }
                     });
@@ -1496,15 +1516,31 @@
                     const pUsageLabels = Object.keys(planTotalUsage).map(p => `Plan ${p}`);
                     const usageDataTotal = Object.values(planTotalUsage);
                     usageDistChartObj = new Chart(ctxUsage, {
-                        type: 'bar',
-                        data: { labels: pUsageLabels, datasets: [{ label: '総使用量(m³)', data: usageDataTotal, backgroundColor: '#2ecc71', borderRadius: 4 }] },
+                        type: 'bar', // 1に合わせた棒グラフ
+                        data: {
+                            labels: pUsageLabels,
+                            datasets: [{
+                                label: '総使用量(m³)',
+                                data: usageDataTotal,
+                                backgroundColor: '#2ecc71', // 使用量は緑を維持
+                                borderRadius: 4
+                            }]
+                        },
                         options: {
-                            responsive: true, maintainAspectRatio: false,
+                            responsive: true,
+                            maintainAspectRatio: false,
                             scales: {
                                 x: { grid: { display: false } },
-                                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: '総使用量 (m³)', font: { size: 11 } } }
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: '#f1f5f9' },
+                                    title: { display: true, text: '総使用量 (m³)', font: { size: 11 } }
+                                }
                             },
-                            plugins: { legend: { display: false }, datalabels: { display: false } }
+                            plugins: {
+                                legend: { display: false },
+                                datalabels: { display: false }
+                            }
                         }
                     });
                 }
