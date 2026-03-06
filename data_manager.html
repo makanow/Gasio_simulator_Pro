@@ -617,6 +617,9 @@
                 const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
                 Papa.parse(unicodeString, {
                     header: true, skipEmptyLines: true,
+                    beforeFirstChunk: function (chunk) {
+                        return chunk.replace(/^\ufeff/, "");
+                    },
                     complete: async function (results) {
                         const insertData = results.data.map(row => {
                             // CSVのキー名を正規化（大文字小文字やトリミングを考慮）して取得する補助関数を想定
