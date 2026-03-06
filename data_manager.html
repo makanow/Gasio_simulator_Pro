@@ -618,10 +618,22 @@
                 Papa.parse(unicodeString, {
                     header: true, skipEmptyLines: true,
                     complete: async function (results) {
-                        const insertData = results.data.map(row => ({
-                            user_id: currentUser.id, plan_id: parseInt(cleanNum(row.plan_id)), plan_name: row.plan_name,
-                            min_usage: cleanNum(row.min_usage), max_usage: cleanNum(row.max_usage), base_fee: cleanNum(row.base_fee), unit_price: cleanNum(row.unit_price)
-                        }));
+                        const insertData = results.data.map(row => {
+                            // CSVのキー名を正規化（大文字小文字やトリミングを考慮）して取得する補助関数を想定
+                            // あるいは、確実なキー名を直接指定する
+                            return {
+                                user_id: currentUser.id,
+                                // row['plan_id'] が無い場合に備え、row['PlanID'] などもチェックするか、
+                                // 単純に row.plan_id が undefined でないか厳密にチェックする
+                                plan_id: parseInt(row.plan_id ?? row.PlanID ?? 0),
+                                plan_name: row.plan_name || row.PlanName || "",
+                                tier_name: row.tier_name || row.TierName || null,
+                                min_usage: parseFloat(row.min_usage || 0),
+                                max_usage: row.max_usage === "" ? 9999 : parseFloat(row.max_usage),
+                                base_fee: parseFloat(row.base_fee || 0),
+                                unit_price: parseFloat(row.unit_price || 0)
+                            };
+                        });
 
                         const { error } = await client.from('price_masters').upsert(insertData);
 
