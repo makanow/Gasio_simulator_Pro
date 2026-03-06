@@ -678,6 +678,7 @@
                 // PapaParseの実行部分をまるごと以下に差し替え
                 // PapaParseの実行部分をまるごと以下に差し替え
                 // uploadMaster内のPapa.parseを以下に差し替え
+                // Papa.parseの実行部分をまるごと以下に差し替え
                 Papa.parse(unicodeString, {
                     header: false, // 爆速配列モード
                     skipEmptyLines: true,
@@ -687,8 +688,9 @@
                             statusEl.innerText = 'データがありません'; statusEl.className = 'status error'; return;
                         }
 
-                        // ヘッダー行のクレンジング
+                        // ヘッダーを小文字化してクリーンに
                         const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '').toLowerCase() : '');
+
                         const getIndex = (keys) => {
                             for (let k of keys) {
                                 const idx = headers.indexOf(k.toLowerCase());
@@ -697,7 +699,7 @@
                             return -1;
                         };
 
-                        // ★修正1：辞書を大幅拡張！Python版の言葉（区画名、適用上限など）も全て吸収する
+                        // 辞書の完全版
                         const idxPlanId = getIndex(['料金表番号', 'plan_id', 'ID', 'プランID', 'Code']);
                         const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名', '区画名', 'tier_name', '区画']);
                         const idxMin = getIndex(['MIN', 'min_usage', '最小', '適用下限']);
@@ -706,30 +708,61 @@
                         const idxUnit = getIndex(['単位料金', '従量料金', 'unit_price', '単価', '従量単価']);
 
                         if (idxPlanId === -1 || idxBase === -1) {
-                            statusEl.innerText = '必須の列（料金表番号、基本料金など）が見つかりません'; statusEl.className = 'status error'; return;
+                            statusEl.innerText = `必須列が見つかりません。認識した列名: ${headers.join(', ')}`;
+                            statusEl.className = 'status error';
+                            return;
                         }
 
                         const insertData = [];
                         for (let i = 1; i < rawData.length; i++) {
                             const row = rawData[i];
-                            // ★修正2：カンマだけの空行（ゴミデータ）を完全に弾く強力な防弾シールド
-                            if (!row[idxPlanId] && !row[idxBase]) continue;
+                            // カンマだけの空行やゴミデータを完全にスキップ
+                            if (!row || row.length === 0 || (!row[idxPlanId] && !row[idxBase])) continue;
+
+                            // ★最強の防弾シールド：undefined, null, 文字としての"null" を全て空文字に浄化する
+                            const getStr = (idx) => {
+                                if (idx === -1 || row[idx] === undefined || row[idx] === null) return "";
+                                const val = String(row[idx]).trim();
+                                return (val.toLowerCase() === "null") ? "" : val;
+                            };
+
+                            const pId = parseInt(cleanNum(getStr(idxPlanId))) || 0;
+                            const pName = getStr(idxPlanName) || "未設定プラン";
+                            const minU = cleanNum(getStr(idxMin));
+
+                            // MAXは空欄なら99999（上限なし）に強制する
+                            const maxStr = getStr(idxMax);
+                            const maxU = maxStr === "" ? 99999 : cleanNum(maxStr);
+
+                            const baseF = cleanNum(getStr(idxBase));
+                            const unitP = cleanNum(getStr(idxUnit));
 
                             insertData.push({
                                 user_id: currentUser.id,
-                                plan_id: parseInt(cleanNum(idxPlanId !== -1 ? row[idxPlanId] : 0)),
-                                plan_name: idxPlanName !== -1 ? String(row[idxPlanName] || "") : "未設定プラン",
-                                min_usage: cleanNum(idxMin !== -1 ? row[idxMin] : 0),
-                                max_usage: cleanNum(idxMax !== -1 ? row[idxMax] : 99999), // MAXが見つからない場合は上限なし扱い
-                                base_fee: cleanNum(idxBase !== -1 ? row[idxBase] : 0),
-                                unit_price: cleanNum(idxUnit !== -1 ? row[idxUnit] : 0)
+                                plan_id: pId,
+                                plan_name: pName,
+                                min_usage: minU,
+                                max_usage: maxU,
+                                base_fee: baseF,
+                                unit_price: unitP
                             });
+                        }
+
+                        if (insertData.length === 0) {
+                            statusEl.innerText = '有効なデータ行がありませんでした'; statusEl.className = 'status error'; return;
                         }
 
                         const { error } = await client.from('price_masters').upsert(insertData);
 
-                        if (error) { statusEl.innerText = 'エラー: ' + error.message; statusEl.className = 'status error'; }
-                        else { statusEl.innerText = '✓ アップロード完了'; statusEl.className = 'status success'; updateCounts(); loadEditableMaster(); }
+                        if (error) {
+                            statusEl.innerText = 'DBエラー: ' + error.message;
+                            statusEl.className = 'status error';
+                        } else {
+                            statusEl.innerText = '✓ アップロード完了';
+                            statusEl.className = 'status success';
+                            updateCounts();
+                            loadEditableMaster();
+                        }
                     }
                 });
             };
