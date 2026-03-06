@@ -374,46 +374,49 @@
         <div class="guide-content">
             <div
                 style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; color: #065f46; font-size: 0.85rem;">
-                <b>自動補正機能:</b> ファイルの文字化け(Shift-JIS)や、数値内のカンマ、全角数字はシステムで自動的に修正されます。
+                <b>自動補正機能:</b> ファイルの文字化け(Shift-JIS)やBOM、数値内のカンマ、全角数字はシステムで自動的に修正されます。
             </div>
+
             <h3 style="margin-top:0;">1. 料金表マスター (price_masters)</h3>
+            <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">
+                <b>💡 ヒント:</b> 以下の日本語ヘッダーで運用可能です。列の順番も自由です。
+            </p>
             <table class="guide-table">
                 <tr>
-                    <th>plan_id</th>
-                    <th>plan_name</th>
-                    <th>min_usage</th>
-                    <th>max_usage</th>
-                    <th>base_fee</th>
-                    <th>unit_price</th>
+                    <th>料金プランID</th>
+                    <th>料金プラン名</th>
+                    <th>下限(m³)</th>
+                    <th>上限(m³)</th>
+                    <th>基本料金</th>
+                    <th>従量単価</th>
                 </tr>
                 <tr>
-                    <td>プランID(例:1)</td>
-                    <td>プラン名</td>
-                    <td>最小(m³)</td>
-                    <td>最大(上限なしは99999)</td>
-                    <td>基本料金</td>
-                    <td>従量単価</td>
+                    <td>例: 101</td>
+                    <td>一般料金</td>
+                    <td>0</td>
+                    <td>8.0</td>
+                    <td>1171</td>
+                    <td>582.59</td>
                 </tr>
             </table>
             <button class="btn-outline" onclick="downloadSample('master')">📥 マスター用テンプレートをダウンロード</button>
 
             <h3 style="margin-top: 2rem;">2. 請求データ (v3版：gas_data_v3)</h3>
             <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">
-                <b>💡 新仕様：</b> 1行目の項目名を自動認識します。<b>列の順番は自由</b>ですが、必ず以下の列名を含めてください。<br>
-                （※「Usage」や「Vol」などの英語名、表記ゆれにも自動対応しています）
+                <b>💡 新仕様：</b> 1行目の項目名を自動認識します。
             </p>
             <table class="guide-table">
                 <tr>
                     <th>年月</th>
                     <th>料金番号</th>
-                    <th>料金表番号 (任意)</th>
+                    <th>料金表番号</th>
                     <th>使用量</th>
                 </tr>
                 <tr>
-                    <td>例: 2403, 2024/03</td>
-                    <td>例: 10005566</td>
-                    <td>例: 01, 101</td>
-                    <td>例: 15.2</td>
+                    <td>例: 2403</td>
+                    <td>10005566</td>
+                    <td>101</td>
+                    <td>15.2</td>
                 </tr>
             </table>
             <button class="btn-outline" onclick="downloadSample('billing')">📥 請求データ用テンプレートをダウンロード</button>
@@ -583,12 +586,12 @@
         function downloadSample(type) {
             let csvContent = ""; let fileName = "";
             if (type === 'master') {
-                csvContent += "plan_id,plan_name,min_usage,max_usage,base_fee,unit_price\n1,標準プラン,0,8.0,1500,650.0\n1,標準プラン,8.1,99999,2300,550.0\n";
-                fileName = "template_master.csv";
+                // 日本語ヘッダーのサンプルを生成
+                csvContent += "料金プランID,料金プラン名,下限(m³),上限(m³),基本料金,従量単価\n101,一般料金,0,8.0,1171,582.59\n101,一般料金,8.1,999999,2300,441.49\n";
+                fileName = "template_master_JP.csv";
             } else {
-                // v3用のサンプルを日本語ヘッダーに変更
-                csvContent += "年月,料金番号,料金表番号,使用量\n202403,10005566,01,15.2\n2024/04/01,10005566,01,18.5\n";
-                fileName = "template_billing_v3.csv";
+                csvContent += "年月,料金番号,料金表番号,使用量\n202403,10005566,101,15.2\n2024/04/01,10005566,101,18.5\n";
+                fileName = "template_billing_v3_JP.csv";
             }
             triggerDownload(csvContent, fileName);
         }
@@ -610,38 +613,75 @@
             const file = document.getElementById('file_master').files[0];
             const statusEl = document.getElementById('status_master');
             if (!file) return;
+
             statusEl.innerText = '解析中...'; statusEl.className = 'status loading';
+
             const reader = new FileReader();
             reader.onload = function (e) {
                 const buffer = new Uint8Array(e.target.result);
+                // Shift-JIS等の文字化け対策
                 const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
+
                 Papa.parse(unicodeString, {
-                    header: true, skipEmptyLines: true,
-                    beforeFirstChunk: function (chunk) {
-                        return chunk.replace(/^\ufeff/, "");
-                    },
+                    header: false, // 請求データと同じ「爆速配列モード」に統一
+                    skipEmptyLines: true,
                     complete: async function (results) {
-                        const insertData = results.data.map(row => {
-                            // CSVのキー名を正規化（大文字小文字やトリミングを考慮）して取得する補助関数を想定
-                            // あるいは、確実なキー名を直接指定する
-                            return {
+                        const rawData = results.data;
+                        if (rawData.length < 2) return;
+
+                        // ヘッダーのクレンジング（BOM除去・空白除去）
+                        const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '') : '');
+
+                        const getIndex = (keys) => {
+                            for (let k of keys) {
+                                const idx = headers.indexOf(k);
+                                if (idx !== -1) return idx;
+                            }
+                            return -1;
+                        };
+
+                        // ★料金表マスター用のエイリアス設定（日本語でも英語でもOK）
+                        const idxPlanId = getIndex(['plan_id', '料金プランID', 'プランID', '料金表番号']);
+                        const idxPlanName = getIndex(['plan_name', '料金プラン名', 'プラン名']);
+                        const idxTierName = getIndex(['tier_name', 'ランク', '階級区分', '区分']);
+                        const idxMinUsage = getIndex(['min_usage', '最小使用量', '下限', 'min']);
+                        const idxMaxUsage = getIndex(['max_usage', '最大使用量', '上限', 'max']);
+                        const idxBaseFee = getIndex(['base_fee', '基本料金', '基本料']);
+                        const idxUnitPrice = getIndex(['unit_price', '従量単価', '単価']);
+
+                        if (idxPlanId === -1 || idxMinUsage === -1) {
+                            statusEl.innerText = 'エラー: 必須列が見つかりません';
+                            statusEl.className = 'status error';
+                            return;
+                        }
+
+                        const insertData = [];
+                        for (let i = 1; i < rawData.length; i++) {
+                            const row = rawData[i];
+                            if (row.length <= 1 && !row[0]) continue;
+
+                            insertData.push({
                                 user_id: currentUser.id,
-                                // row['plan_id'] が無い場合に備え、row['PlanID'] などもチェックするか、
-                                // 単純に row.plan_id が undefined でないか厳密にチェックする
-                                plan_id: parseInt(row.plan_id ?? row.PlanID ?? 0),
-                                plan_name: row.plan_name || row.PlanName || "",
-                                tier_name: row.tier_name || row.TierName || null,
-                                min_usage: parseFloat(row.min_usage || 0),
-                                max_usage: row.max_usage === "" ? 9999 : parseFloat(row.max_usage),
-                                base_fee: parseFloat(row.base_fee || 0),
-                                unit_price: parseFloat(row.unit_price || 0)
-                            };
-                        });
+                                plan_id: parseInt(row[idxPlanId] || 0),
+                                plan_name: idxPlanName !== -1 ? row[idxPlanName] : "",
+                                tier_name: idxTierName !== -1 ? row[idxTierName] : null,
+                                min_usage: parseFloat(row[idxMinUsage] || 0),
+                                max_usage: idxMaxUsage !== -1 ? (row[idxMaxUsage] === "" ? 999999 : parseFloat(row[idxMaxUsage])) : 999999,
+                                base_fee: idxBaseFee !== -1 ? parseFloat(row[idxBaseFee] || 0) : 0,
+                                unit_price: idxUnitPrice !== -1 ? parseFloat(row[idxUnitPrice] || 0) : 0
+                            });
+                        }
 
                         const { error } = await client.from('price_masters').upsert(insertData);
 
-                        if (error) { statusEl.innerText = 'エラー: ' + error.message; statusEl.className = 'status error'; }
-                        else { statusEl.innerText = '✓ アップロード完了'; statusEl.className = 'status success'; updateCounts(); loadEditableMaster(); }
+                        if (error) {
+                            statusEl.innerText = 'エラー: ' + error.message;
+                            statusEl.className = 'status error';
+                        } else {
+                            statusEl.innerText = '✓ マスター更新完了';
+                            statusEl.className = 'status success';
+                            updateCounts(); loadEditableMaster();
+                        }
                     }
                 });
             };
