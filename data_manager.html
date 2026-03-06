@@ -500,41 +500,10 @@
         }
 
         async function updateCounts() {
-            try {
-                // マスターデータの件数取得
-                const { count: masterCount, error: masterError } = await client
-                    .from('price_masters')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', currentUser.id);
-
-                if (masterError) throw masterError;
-
-                const masterCountEl = document.getElementById('masterCount');
-                if (masterCountEl) {
-                    masterCountEl.innerText = masterCount !== null ? masterCount.toLocaleString() : "0";
-                }
-
-                // 請求データ(v3)の件数取得
-                const { count: billingCount, error: billingError } = await client
-                    .from('gas_data_v3')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', currentUser.id);
-
-                if (billingError) throw billingError;
-
-                const billingCountEl = document.getElementById('billingCount');
-                if (billingCountEl) {
-                    billingCountEl.innerText = billingCount !== null ? billingCount.toLocaleString() : "0";
-                }
-
-            } catch (error) {
-                console.error('件数取得エラー:', error);
-                // エラーが起きてもフリーズさせず、画面に「エラー」と表示して処理を終わらせる
-                const masterCountEl = document.getElementById('masterCount');
-                const billingCountEl = document.getElementById('billingCount');
-                if (masterCountEl && masterCountEl.innerText === "取得中...") masterCountEl.innerText = "エラー";
-                if (billingCountEl && billingCountEl.innerText === "取得中...") billingCountEl.innerText = "エラー";
-            }
+            const { count: mCount } = await client.from('price_masters').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+            const { count: bCount } = await client.from('gas_data_v3').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+            document.getElementById('master_count').innerText = `データ件数: ${mCount || 0}件`;
+            document.getElementById('billing_count').innerText = `データ件数: ${(bCount || 0).toLocaleString()}件`;
         }
 
         // --- 料金表マスター ---
@@ -645,15 +614,70 @@
             const file = document.getElementById('file_master').files[0];
             const statusEl = document.getElementById('status_master');
             if (!file) return;
-
-            statusEl.innerText = '解析中...';
-            statusEl.className = 'status loading';
-
+            statusEl.innerText = '解析中...'; statusEl.className = 'status loading';
             const reader = new FileReader();
             reader.onload = function (e) {
                 const buffer = new Uint8Array(e.target.result);
                 const unicodeString = Encoding.convert(buffer, { to: 'UNICODE', type: 'string' });
+                Papa.parse(unicodeString, {
+                    header: true, skipEmptyLines: true,
+                    complete: async function (results) {
+                        const insertData = results.data.map(row => ({
+                            user_id: currentUser.id, plan_id: parseInt(cleanNum(row.plan_id)), plan_name: row.plan_name,
+                            min_usage: cleanNum(row.min_usage), max_usage: cleanNum(row.max_usage), base_fee: cleanNum(row.base_fee), unit_price: cleanNum(row.unit_price)
+                        }));
 
+                        const { error } = await client.from('price_masters').upsert(insertData);
+
+                        if (error) { statusEl.innerText = 'エラー: ' + error.message; statusEl.className = 'status error'; }
+                        else { statusEl.innerText = '✓ アップロード完了'; statusEl.className = 'status success'; updateCounts(); loadEditableMaster(); }
+                    }
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function deleteMaster() {
+            if (!confirm("料金表データを削除しますか？")) return;
+            await client.from('price_masters').delete().eq('user_id', currentUser.id);
+            updateCounts(); loadEditableMaster();
+        }
+
+        // --- v3 請求データインポートロジック ---
+        function standardizeYearMonth(val) {
+            if (!val) return null;
+            let s = val.toString().trim().replace(/["']/g, "");
+            if (s.includes('/') || s.includes('-')) {
+                const date = new Date(s);
+                if (!isNaN(date.getTime())) {
+                    const y = date.getFullYear();
+                    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+                    return `${y}${m}`;
+                }
+            }
+            if (s.length === 4 && /^\d+$/.test(s)) return "20" + s;
+            if (s.length === 6 && /^\d+$/.test(s)) return s;
+            return null;
+        }
+
+        async function handleBillingUpload() {
+            const file = document.getElementById('file_billing').files[0];
+            if (!file) return;
+
+            const statusEl = document.getElementById('status_billing');
+            statusEl.innerText = '解析中...'; statusEl.className = 'status loading';
+            log(`ファイル受信: ${file.name}`);
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const codes = new Uint8Array(e.target.result);
+                const encoding = Encoding.detect(codes);
+                const unicodeString = Encoding.convert(codes, { to: 'UNICODE', from: encoding, type: 'string' });
+
+                // PapaParseの実行部分をまるごと以下に差し替え
+                // PapaParseの実行部分をまるごと以下に差し替え
+                // PapaParseの実行部分をまるごと以下に差し替え
+                // uploadMaster内のPapa.parseを以下に差し替え
                 Papa.parse(unicodeString, {
                     header: false, // 爆速配列モード
                     skipEmptyLines: true,
@@ -663,266 +687,77 @@
                             statusEl.innerText = 'データがありません'; statusEl.className = 'status error'; return;
                         }
 
-                        // ヘッダーを小文字化してクリーンに
-                        const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().toLowerCase() : '');
-
-                        // ★無敵の検索アルゴリズム（部分一致）
+                        // ヘッダー行のクレンジング
+                        const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '') : '');
                         const getIndex = (keys) => {
                             for (let k of keys) {
-                                const idx = headers.findIndex(h => h.includes(k.toLowerCase()));
+                                const idx = headers.indexOf(k);
                                 if (idx !== -1) return idx;
                             }
                             return -1;
                         };
 
-                        // 辞書の完全版
-                        const idxPlanId = getIndex(['料金表番号', 'plan_id', 'id', 'プランid', 'code']);
-                        const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名', '区画名', 'tier_name', '区画']);
-                        const idxMin = getIndex(['min', 'min_usage', '最小', '適用下限']);
-                        const idxMax = getIndex(['max', 'max_usage', '最大', '上限', '適用上限']);
-                        const idxBase = getIndex(['基本料金', '基準料金', 'base_fee', '基本', 'base']);
-                        const idxUnit = getIndex(['単位料金', '従量料金', 'unit_price', '単価', '従量単価']);
+                        // 列名のマッピング（日本語と英語の両対応）
+                        const idxPlanId = getIndex(['料金表番号', 'plan_id', 'ID', 'プランID']);
+                        const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名']);
+                        const idxMin = getIndex(['MIN', 'min_usage', '最小']);
+                        const idxMax = getIndex(['MAX', 'max_usage', '最大', '上限']);
+                        const idxBase = getIndex(['基本料金', 'base_fee', '基本']);
+                        const idxUnit = getIndex(['単位料金', 'unit_price', '単価', '従量単価']);
 
                         if (idxPlanId === -1 || idxBase === -1) {
-                            statusEl.innerText = `必須列が見つかりません。認識した列名: ${headers.join(', ')}`;
-                            statusEl.className = 'status error';
-                            return;
+                            statusEl.innerText = '必須の列（料金表番号、基本料金など）が見つかりません'; statusEl.className = 'status error'; return;
                         }
 
                         const insertData = [];
                         for (let i = 1; i < rawData.length; i++) {
                             const row = rawData[i];
-                            // カンマだけの空行やゴミデータを完全にスキップ
-                            if (!row || row.length === 0 || (!row[idxPlanId] && !row[idxBase])) continue;
-
-                            // ★最強の防弾シールド：undefined, null, 文字としての"null" を全て空文字に浄化する
-                            const getStr = (idx) => {
-                                if (idx === -1 || row[idx] === undefined || row[idx] === null) return "";
-                                const val = String(row[idx]).trim();
-                                return (val.toLowerCase() === "null") ? "" : val;
-                            };
-
-                            const pId = parseInt(cleanNum(getStr(idxPlanId))) || 0;
-                            const pName = getStr(idxPlanName) || "未設定プラン";
-                            const minU = cleanNum(getStr(idxMin));
-
-                            // MAXは空欄なら99999（上限なし）に強制する
-                            const maxStr = getStr(idxMax);
-                            const maxU = maxStr === "" ? 99999 : cleanNum(maxStr);
-
-                            const baseF = cleanNum(getStr(idxBase));
-                            const unitP = cleanNum(getStr(idxUnit));
+                            if (row.length === 1 && !row[0]) continue;
 
                             insertData.push({
                                 user_id: currentUser.id,
-                                plan_id: pId,
-                                plan_name: pName,
-                                min_usage: minU,
-                                max_usage: maxU,
-                                base_fee: baseF,
-                                unit_price: unitP
+                                plan_id: parseInt(cleanNum(row[idxPlanId])),
+                                plan_name: idxPlanName !== -1 ? String(row[idxPlanName] || "") : "未設定プラン",
+                                min_usage: cleanNum(row[idxMin]),
+                                max_usage: cleanNum(row[idxMax]),
+                                base_fee: cleanNum(row[idxBase]),
+                                unit_price: cleanNum(row[idxUnit])
                             });
-                        }
-
-                        if (insertData.length === 0) {
-                            statusEl.innerText = '有効なデータ行がありませんでした'; statusEl.className = 'status error'; return;
                         }
 
                         const { error } = await client.from('price_masters').upsert(insertData);
 
-                        if (error) {
-                            statusEl.innerText = 'DBエラー: ' + error.message;
-                            statusEl.className = 'status error';
-                        } else {
-                            statusEl.innerText = '✓ アップロード完了';
-                            statusEl.className = 'status success';
-                            updateCounts();
-                            loadEditableMaster();
-                        }
+                        if (error) { statusEl.innerText = 'エラー: ' + error.message; statusEl.className = 'status error'; }
+                        else { statusEl.innerText = '✓ アップロード完了'; statusEl.className = 'status success'; updateCounts(); loadEditableMaster(); }
                     }
                 });
             };
             reader.readAsArrayBuffer(file);
         }
 
-        async function deleteMaster() {
-            if (!confirm("料金表マスターの全データを削除します。よろしいですか？")) return;
+        async function downloadBilling() {
+            const statusEl = document.getElementById('status_billing');
+            statusEl.innerText = '準備中...'; statusEl.className = 'status loading';
+            let allData = []; let step = 1000; let start = 0; let fetchMore = true;
 
-            statusEl.innerText = 'マスターデータを削除中...';
-            statusEl.className = 'status processing';
-
-            try {
-                // 確実に自分のデータを全件削除する
-                const { error } = await client
-                    .from('price_masters')
-                    .delete()
-                    .eq('user_id', currentUser.id);
-
-                if (error) throw error;
-
-                statusEl.innerText = '✓ マスターデータを全件削除しました';
-                statusEl.className = 'status success';
-                log('✅ マスターデータを全件削除しました');
-
-                await updateCounts(); // 件数表示を更新
-                loadEditableMaster(); // 画面の表をクリア
-
-            } catch (error) {
-                console.error('削除エラー:', error);
-                statusEl.innerText = `削除エラー: ${error.message}`;
-                statusEl.className = 'status error';
-                log(`❌ マスターデータの削除に失敗: ${error.message}`);
+            while (fetchMore) {
+                const { data, error } = await client.from('gas_data_v3').select('year_month, plan_id, tariff_id, usage_amount').eq('user_id', currentUser.id).order('year_month', { ascending: true }).order('plan_id', { ascending: true }).range(start, start + step - 1);
+                if (error) { statusEl.innerText = 'エラー'; return; }
+                if (data && data.length > 0) { allData = allData.concat(data); start += data.length; statusEl.innerText = `取得中... (${allData.length.toLocaleString()}件)`; }
+                if (!data || data.length < step) fetchMore = false;
             }
+            if (allData.length > 0) { triggerDownload(Papa.unparse(allData), "gasio_v3_billing_data.csv"); statusEl.innerText = `✓ バックアップ完了`; statusEl.className = 'status success'; }
+            else { statusEl.innerText = `データがありません`; statusEl.className = 'status error'; }
         }
 
-        // --- v3 請求データインポートロジック ---
-        function standardizeYearMonth(val) {
+        async function deleteBilling() {
+            if (!confirm("gas_data_v3 の全請求データを削除しますか？")) return;
+            const { error } = await client.from('gas_data_v3').delete().eq('user_id', currentUser.id);
+            if (error) log(`❌ 削除失敗: ${error.message}`);
+            else { log("🗑️ データを全削除しました。"); document.getElementById('status_billing').innerText = '削除完了'; updateCounts(); }
+        }
 
-            // --- v3 請求データインポートロジック ---
-            function standardizeYearMonth(val) {
-                if (!val) return null;
-                let s = val.toString().trim().replace(/["']/g, "");
-                if (s.includes('/') || s.includes('-')) {
-                    const date = new Date(s);
-                    if (!isNaN(date.getTime())) {
-                        const y = date.getFullYear();
-                        const m = (date.getMonth() + 1).toString().padStart(2, '0');
-                        return `${y}${m}`;
-                    }
-                }
-                if (s.length === 4 && /^\d+$/.test(s)) return "20" + s;
-                if (s.length === 6 && /^\d+$/.test(s)) return s;
-                return null;
-            }
-
-            async function handleBillingUpload() {
-                const file = document.getElementById('file_billing').files[0];
-                if (!file) return;
-
-                const statusEl = document.getElementById('status_billing');
-                statusEl.innerText = '解析中...'; statusEl.className = 'status loading';
-                log(`ファイル受信: ${file.name}`);
-
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const codes = new Uint8Array(e.target.result);
-                    const encoding = Encoding.detect(codes);
-                    const unicodeString = Encoding.convert(codes, { to: 'UNICODE', from: encoding, type: 'string' });
-
-                    // Papa.parseの実行部分をまるごと以下に差し替え
-                    Papa.parse(unicodeString, {
-                        header: false, // 爆速配列モード
-                        skipEmptyLines: true,
-                        complete: async function (results) {
-                            const rawData = results.data;
-                            if (rawData.length < 2) {
-                                statusEl.innerText = 'データがありません'; statusEl.className = 'status error'; return;
-                            }
-
-                            // ヘッダーを小文字化してクリーンに
-                            const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().toLowerCase() : '');
-
-                            // ★無敵の検索アルゴリズム（部分一致）
-                            const getIndex = (keys) => {
-                                for (let k of keys) {
-                                    const idx = headers.findIndex(h => h.includes(k.toLowerCase()));
-                                    if (idx !== -1) return idx;
-                                }
-                                return -1;
-                            };
-
-                            // 辞書の完全版
-                            const idxPlanId = getIndex(['料金表番号', 'plan_id', 'id', 'プランid', 'code']);
-                            const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名', '区画名', 'tier_name', '区画']);
-                            const idxMin = getIndex(['min', 'min_usage', '最小', '適用下限']);
-                            const idxMax = getIndex(['max', 'max_usage', '最大', '上限', '適用上限']);
-                            const idxBase = getIndex(['基本料金', '基準料金', 'base_fee', '基本', 'base']);
-                            const idxUnit = getIndex(['単位料金', '従量料金', 'unit_price', '単価', '従量単価']);
-
-                            if (idxPlanId === -1 || idxBase === -1) {
-                                statusEl.innerText = `必須列が見つかりません。認識した列名: ${headers.join(', ')}`;
-                                statusEl.className = 'status error';
-                                return;
-                            }
-
-                            const insertData = [];
-                            for (let i = 1; i < rawData.length; i++) {
-                                const row = rawData[i];
-                                // カンマだけの空行やゴミデータを完全にスキップ
-                                if (!row || row.length === 0 || (!row[idxPlanId] && !row[idxBase])) continue;
-
-                                // ★最強の防弾シールド：undefined, null, 文字としての"null" を全て空文字に浄化する
-                                const getStr = (idx) => {
-                                    if (idx === -1 || row[idx] === undefined || row[idx] === null) return "";
-                                    const val = String(row[idx]).trim();
-                                    return (val.toLowerCase() === "null") ? "" : val;
-                                };
-
-                                const pId = parseInt(cleanNum(getStr(idxPlanId))) || 0;
-                                const pName = getStr(idxPlanName) || "未設定プラン";
-                                const minU = cleanNum(getStr(idxMin));
-
-                                // MAXは空欄なら99999（上限なし）に強制する
-                                const maxStr = getStr(idxMax);
-                                const maxU = maxStr === "" ? 99999 : cleanNum(maxStr);
-
-                                const baseF = cleanNum(getStr(idxBase));
-                                const unitP = cleanNum(getStr(idxUnit));
-
-                                insertData.push({
-                                    user_id: currentUser.id,
-                                    plan_id: pId,
-                                    plan_name: pName,
-                                    min_usage: minU,
-                                    max_usage: maxU,
-                                    base_fee: baseF,
-                                    unit_price: unitP
-                                });
-                            }
-
-                            if (insertData.length === 0) {
-                                statusEl.innerText = '有効なデータ行がありませんでした'; statusEl.className = 'status error'; return;
-                            }
-
-                            const { error } = await client.from('price_masters').upsert(insertData);
-
-                            if (error) {
-                                statusEl.innerText = 'DBエラー: ' + error.message;
-                                statusEl.className = 'status error';
-                            } else {
-                                statusEl.innerText = '✓ アップロード完了';
-                                statusEl.className = 'status success';
-                                updateCounts();
-                                loadEditableMaster();
-                            }
-                        }
-                    });
-                    reader.readAsArrayBuffer(file);
-                }
-
-                async function downloadBilling() {
-                    const statusEl = document.getElementById('status_billing');
-                    statusEl.innerText = '準備中...'; statusEl.className = 'status loading';
-                    let allData = []; let step = 1000; let start = 0; let fetchMore = true;
-
-                    while (fetchMore) {
-                        const { data, error } = await client.from('gas_data_v3').select('year_month, plan_id, tariff_id, usage_amount').eq('user_id', currentUser.id).order('year_month', { ascending: true }).order('plan_id', { ascending: true }).range(start, start + step - 1);
-                        if (error) { statusEl.innerText = 'エラー'; return; }
-                        if (data && data.length > 0) { allData = allData.concat(data); start += data.length; statusEl.innerText = `取得中... (${allData.length.toLocaleString()}件)`; }
-                        if (!data || data.length < step) fetchMore = false;
-                    }
-                    if (allData.length > 0) { triggerDownload(Papa.unparse(allData), "gasio_v3_billing_data.csv"); statusEl.innerText = `✓ バックアップ完了`; statusEl.className = 'status success'; }
-                    else { statusEl.innerText = `データがありません`; statusEl.className = 'status error'; }
-                }
-
-                async function deleteBilling() {
-                    if (!confirm("gas_data_v3 の全請求データを削除しますか？")) return;
-                    const { error } = await client.from('gas_data_v3').delete().eq('user_id', currentUser.id);
-                    if (error) log(`❌ 削除失敗: ${error.message}`);
-                    else { log("🗑️ データを全削除しました。"); document.getElementById('status_billing').innerText = '削除完了'; updateCounts(); }
-                }
-
-                checkAuth();
+        checkAuth();
     </script>
 </body>
 
