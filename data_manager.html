@@ -687,17 +687,19 @@
                             statusEl.innerText = 'データがありません'; statusEl.className = 'status error'; return;
                         }
 
-                        // ヘッダー行のクレンジング
-                        const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '') : '');
+                        // ヘッダー行のクレンジング（★ .toLowerCase() を追加して強制小文字化）
+                        const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '').toLowerCase() : '');
                         const getIndex = (keys) => {
                             for (let k of keys) {
-                                const idx = headers.indexOf(k);
+                                // ★ 探すキーワード側も .toLowerCase() を追加して小文字で照合する
+                                const idx = headers.indexOf(k.toLowerCase());
                                 if (idx !== -1) return idx;
                             }
                             return -1;
                         };
 
                         // 列名のマッピング（日本語と英語の両対応）
+                        // ★ 辞書側は大文字が混ざったままでOK！（裏で自動的に小文字で照合される）
                         const idxPlanId = getIndex(['料金表番号', 'plan_id', 'ID', 'プランID']);
                         const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名']);
                         const idxMin = getIndex(['MIN', 'min_usage', '最小']);
