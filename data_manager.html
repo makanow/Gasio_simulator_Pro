@@ -402,7 +402,7 @@
         let allData = []; let step = 1000; let start = 0; let fetchMore = true;
         
         while(fetchMore) {
-            const { data, error } = await client.from('gas_data_v3').select('year_month, plan_id, tariff_id, usage_amount').eq('user_id', currentUser.id).range(start, start + step - 1);
+            const { data, error } = await client.from('gas_data_v3').select('year_month, plan_id, tariff_id, usage_amount').eq('user_id', currentUser.id).order('year_month', { ascending: true }).order('plan_id', { ascending: true }).range(start, start + step - 1);
             if (error) { statusEl.innerText = 'エラー'; return; }
             if (data && data.length > 0) { allData = allData.concat(data); start += data.length; statusEl.innerText = `取得中... (${allData.length.toLocaleString()}件)`; }
             if (!data || data.length < step) fetchMore = false;

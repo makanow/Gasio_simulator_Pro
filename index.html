@@ -941,6 +941,7 @@
                             .select('year_month, tariff_id, plan_id, usage_amount')
                             .eq('user_id', currentUser.id)
                             .order('year_month', { ascending: true })
+                            .order('plan_id', { ascending: true }) // ★これを追加！これで順序が絶対固定される！
                             .range(start, start + step - 1);
 
                         if (error) {
