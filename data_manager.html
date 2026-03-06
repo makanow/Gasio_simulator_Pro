@@ -671,15 +671,21 @@
                 const unicodeString = Encoding.convert(codes, { to: 'UNICODE', from: encoding, type: 'string' });
 
                 // PapaParseの実行部分をまるごと以下に差し替え
+                // PapaParseの実行部分をまるごと以下に差し替え
                 Papa.parse(unicodeString, {
-                    header: true, // ★ここをtrueに変更し、1行目をキーとして読み込む
+                    header: true,
                     skipEmptyLines: true,
+                    // ★追加1：CSV特有の見えない文字（BOM）や空白、不要な引用符を自動除去する
+                    transformHeader: function (h) {
+                        return h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '');
+                    },
                     complete: async (results) => {
                         const rawData = results.data;
                         log(`${rawData.length}件のデータを検出。表記ゆれ補正とクレンジング開始...`);
 
+                        let errorCount = 0; // ★追加2：エラーログの大量発生を防ぐストッパー
+
                         const insertData = rawData.map((row, idx) => {
-                            // 辞書マッピングによる値の抽出（Pythonのmini仕様を完全再現）
                             const getValue = (keys) => {
                                 for (let k of keys) {
                                     if (row[k] !== undefined && row[k] !== "") return row[k];
@@ -692,12 +698,14 @@
                             const rawTariffId = getValue(['料金表番号', 'tariff_id']);
                             const rawUsage = getValue(['使用量', 'Usage', 'usage', 'Vol', 'usage_amount', 'usage_m3']);
 
-                            // ヘッダー行や完全な空行をスキップ
                             if (!rawYm && !rawPlanId && !rawUsage) return null;
 
                             const ym = standardizeYearMonth(rawYm);
                             if (!ym) {
-                                log(`⚠️ 行 ${idx + 2}: 年月の解釈に失敗 (${rawYm || '空欄'})`);
+                                errorCount++;
+                                // ログが画面をフリーズさせないよう、3件でストップする
+                                if (errorCount <= 3) log(`⚠️ 行 ${idx + 2}: 年月の解釈に失敗 (${rawYm || '空欄'})`);
+                                else if (errorCount === 4) log(`⚠️ ...以降の中間エラーログは省略します`);
                                 return null;
                             }
 
@@ -713,6 +721,8 @@
                         log(`クレンジング完了。有効データ: ${insertData.length}件`);
 
                         if (insertData.length === 0) {
+                            // 失敗した場合、CSVの実際の列名をコンソールに表示してヒントを出す
+                            log(`❌ 有効なデータが0件です。認識された列名: ${Object.keys(rawData[0] || {}).join(', ')}`);
                             statusEl.innerText = '有効なデータがありませんでした';
                             statusEl.className = 'status error';
                             return;
