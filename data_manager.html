@@ -379,12 +379,13 @@
 
             <h3 style="margin-top:0;">1. 料金表マスター (price_masters)</h3>
             <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">
-                <b>💡 ヒント:</b> 以下の日本語ヘッダーで運用可能です。列の順番も自由です。
+                <b>💡 ヒント:</b> 日本語の項目名で運用可能です。列の順番も自由に入れ替えられます。
             </p>
             <table class="guide-table">
                 <tr>
                     <th>料金プランID</th>
                     <th>料金プラン名</th>
+                    <th>区画名</th>
                     <th>下限(m³)</th>
                     <th>上限(m³)</th>
                     <th>基本料金</th>
@@ -393,6 +394,7 @@
                 <tr>
                     <td>例: 101</td>
                     <td>一般料金</td>
+                    <td>A</td>
                     <td>0</td>
                     <td>8.0</td>
                     <td>1171</td>
@@ -400,26 +402,6 @@
                 </tr>
             </table>
             <button class="btn-outline" onclick="downloadSample('master')">📥 マスター用テンプレートをダウンロード</button>
-
-            <h3 style="margin-top: 2rem;">2. 請求データ (v3版：gas_data_v3)</h3>
-            <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">
-                <b>💡 新仕様：</b> 1行目の項目名を自動認識します。
-            </p>
-            <table class="guide-table">
-                <tr>
-                    <th>年月</th>
-                    <th>料金番号</th>
-                    <th>料金表番号</th>
-                    <th>使用量</th>
-                </tr>
-                <tr>
-                    <td>例: 2403</td>
-                    <td>10005566</td>
-                    <td>101</td>
-                    <td>15.2</td>
-                </tr>
-            </table>
-            <button class="btn-outline" onclick="downloadSample('billing')">📥 請求データ用テンプレートをダウンロード</button>
         </div>
     </details>
 
@@ -586,8 +568,8 @@
         function downloadSample(type) {
             let csvContent = ""; let fileName = "";
             if (type === 'master') {
-                // 日本語ヘッダーのサンプルを生成
-                csvContent += "料金プランID,料金プラン名,下限(m³),上限(m³),基本料金,従量単価\n101,一般料金,0,8.0,1171,582.59\n101,一般料金,8.1,999999,2300,441.49\n";
+                // 日本語ヘッダーかつ「区画名」を含めた構成に変更
+                csvContent += "料金プランID,料金プラン名,区画名,下限(m³),上限(m³),基本料金,従量単価\n101,一般料金,A,0,8.0,1171,582.59\n101,一般料金,B,8.1,999999,2300,441.49\n";
                 fileName = "template_master_JP.csv";
             } else {
                 csvContent += "年月,料金番号,料金表番号,使用量\n202403,10005566,101,15.2\n2024/04/01,10005566,101,18.5\n";
