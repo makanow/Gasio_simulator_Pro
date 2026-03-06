@@ -374,12 +374,11 @@
         <div class="guide-content">
             <div
                 style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; color: #065f46; font-size: 0.85rem;">
-                <b>自動補正機能:</b> ファイルの文字化け(Shift-JIS)やBOM、数値内のカンマ、全角数字はシステムで自動的に修正されます。
+                <b>自動補正機能:</b> 文字化け(Shift-JIS)やBOM、数値内のカンマ、全角数字はシステムで自動修正されます。
             </div>
-
             <h3 style="margin-top:0;">1. 料金表マスター (price_masters)</h3>
             <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">
-                <b>💡 ヒント:</b> 日本語の項目名で運用可能です。列の順番も自由に入れ替えられます。
+                <b>💡 ヒント:</b> 日本語の項目名（列名）で運用可能です。列の順番は自由です。
             </p>
             <table class="guide-table">
                 <tr>
@@ -392,7 +391,7 @@
                     <th>従量単価</th>
                 </tr>
                 <tr>
-                    <td>例: 101</td>
+                    <td>101</td>
                     <td>一般料金</td>
                     <td>A</td>
                     <td>0</td>
@@ -401,7 +400,24 @@
                     <td>582.59</td>
                 </tr>
             </table>
-            <button class="btn-outline" onclick="downloadSample('master')">📥 マスター用テンプレートをダウンロード</button>
+            <button class="btn-outline" onclick="downloadSample('master')">📥 日本語テンプレートをダウンロード</button>
+
+            <h3 style="margin-top: 2rem;">2. 請求データ (v3版)</h3>
+            <table class="guide-table">
+                <tr>
+                    <th>年月</th>
+                    <th>料金番号</th>
+                    <th>料金表番号</th>
+                    <th>使用量</th>
+                </tr>
+                <tr>
+                    <td>2403</td>
+                    <td>10005566</td>
+                    <td>101</td>
+                    <td>15.2</td>
+                </tr>
+            </table>
+            <button class="btn-outline" onclick="downloadSample('billing')">📥 請求データ用テンプレート</button>
         </div>
     </details>
 
@@ -568,11 +584,10 @@
         function downloadSample(type) {
             let csvContent = ""; let fileName = "";
             if (type === 'master') {
-                // 日本語ヘッダーかつ「区画名」を含めた構成に変更
                 csvContent += "料金プランID,料金プラン名,区画名,下限(m³),上限(m³),基本料金,従量単価\n101,一般料金,A,0,8.0,1171,582.59\n101,一般料金,B,8.1,999999,2300,441.49\n";
                 fileName = "template_master_JP.csv";
             } else {
-                csvContent += "年月,料金番号,料金表番号,使用量\n202403,10005566,101,15.2\n2024/04/01,10005566,101,18.5\n";
+                csvContent += "年月,料金番号,料金表番号,使用量\n202403,10005566,101,15.2\n";
                 fileName = "template_billing_v3_JP.csv";
             }
             triggerDownload(csvContent, fileName);
@@ -622,12 +637,12 @@
                             return -1;
                         };
 
-                        // ★料金表マスター用のエイリアス設定（日本語でも英語でもOK）
+                        // 列の位置を特定（英語・日本語両対応エイリアス）
                         const idxPlanId = getIndex(['plan_id', '料金プランID', 'プランID', '料金表番号']);
                         const idxPlanName = getIndex(['plan_name', '料金プラン名', 'プラン名']);
                         const idxTierName = getIndex(['tier_name', '区画名', 'ランク', '区分', '階級']);
-                        const idxMinUsage = getIndex(['min_usage', '最小使用量', '下限', 'min']);
-                        const idxMaxUsage = getIndex(['max_usage', '最大使用量', '上限', 'max']);
+                        const idxMinUsage = getIndex(['min_usage', '最小使用量', '下限(m³)', '下限', 'min']);
+                        const idxMaxUsage = getIndex(['max_usage', '最大使用量', '上限(m³)', '上限', 'max']);
                         const idxBaseFee = getIndex(['base_fee', '基本料金', '基本料']);
                         const idxUnitPrice = getIndex(['unit_price', '従量単価', '単価']);
 
