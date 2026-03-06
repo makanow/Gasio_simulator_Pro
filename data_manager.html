@@ -377,25 +377,22 @@
                 <b>自動補正機能:</b> ファイルの文字化け(Shift-JIS)や、数値内のカンマ、全角数字はシステムで自動的に修正されます。
             </div>
             <h3 style="margin-top:0;">1. 料金表マスター (price_masters)</h3>
-            <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">
-                <b>💡 新仕様：</b> 1行目の項目名を自動認識します。列の順番は自由です。
-            </p>
             <table class="guide-table">
                 <tr>
-                    <th>料金表番号</th>
-                    <th>料金表名</th>
-                    <th>MIN</th>
-                    <th>MAX</th>
-                    <th>基本料金</th>
-                    <th>単位料金</th>
+                    <th>plan_id</th>
+                    <th>plan_name</th>
+                    <th>min_usage</th>
+                    <th>max_usage</th>
+                    <th>base_fee</th>
+                    <th>unit_price</th>
                 </tr>
                 <tr>
-                    <td>例: 101</td>
-                    <td>一般契約</td>
-                    <td>0</td>
-                    <td>8.0 (上限なしは99999)</td>
-                    <td>1171</td>
-                    <td>582.59</td>
+                    <td>プランID(例:1)</td>
+                    <td>プラン名</td>
+                    <td>最小(m³)</td>
+                    <td>最大(上限なしは99999)</td>
+                    <td>基本料金</td>
+                    <td>従量単価</td>
                 </tr>
             </table>
             <button class="btn-outline" onclick="downloadSample('master')">📥 マスター用テンプレートをダウンロード</button>
@@ -586,11 +583,10 @@
         function downloadSample(type) {
             let csvContent = ""; let fileName = "";
             if (type === 'master') {
-                // ★マスター用を「完全日本語ヘッダー」に変更
-                csvContent += "料金表番号,料金表名,MIN,MAX,基本料金,単位料金\n101,標準プラン,0,8.0,1500,650.0\n101,標準プラン,8.1,99999,2300,550.0\n";
+                csvContent += "plan_id,plan_name,min_usage,max_usage,base_fee,unit_price\n1,標準プラン,0,8.0,1500,650.0\n1,標準プラン,8.1,99999,2300,550.0\n";
                 fileName = "template_master.csv";
             } else {
-                // ★請求データ(v3)用も「完全日本語ヘッダー」に変更済み
+                // v3用のサンプルを日本語ヘッダーに変更
                 csvContent += "年月,料金番号,料金表番号,使用量\n202403,10005566,01,15.2\n2024/04/01,10005566,01,18.5\n";
                 fileName = "template_billing_v3.csv";
             }
@@ -677,18 +673,21 @@
                 // PapaParseの実行部分をまるごと以下に差し替え
                 // PapaParseの実行部分をまるごと以下に差し替え
                 // PapaParseの実行部分をまるごと以下に差し替え
-                // uploadMaster内のPapa.parseを以下に差し替え
                 Papa.parse(unicodeString, {
-                    header: false, // 爆速配列モード
+                    header: false, // ★元の「爆速配列モード」に戻す！
                     skipEmptyLines: true,
-                    complete: async function (results) {
+                    complete: async (results) => {
                         const rawData = results.data;
                         if (rawData.length < 2) {
-                            statusEl.innerText = 'データがありません'; statusEl.className = 'status error'; return;
+                            statusEl.innerText = 'データがありません';
+                            statusEl.className = 'status error';
+                            return;
                         }
 
-                        // ヘッダー行のクレンジング
+                        // ★1行目からヘッダー（列名）の場所を特定するスマート処理
+                        // BOM（見えない文字）や引用符を自動除去してクリーンにする
                         const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '') : '');
+
                         const getIndex = (keys) => {
                             for (let k of keys) {
                                 const idx = headers.indexOf(k);
@@ -697,38 +696,79 @@
                             return -1;
                         };
 
-                        // 列名のマッピング（日本語と英語の両対応）
-                        const idxPlanId = getIndex(['料金表番号', 'plan_id', 'ID', 'プランID']);
-                        const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名']);
-                        const idxMin = getIndex(['MIN', 'min_usage', '最小']);
-                        const idxMax = getIndex(['MAX', 'max_usage', '最大', '上限']);
-                        const idxBase = getIndex(['基本料金', 'base_fee', '基本']);
-                        const idxUnit = getIndex(['単位料金', 'unit_price', '単価', '従量単価']);
+                        // 列の「名前」をもとに、何番目の列にデータがあるかを探し出す（ネーミングの衝突も完全解決済）
+                        const idxYm = getIndex(['年月', 'year_month', 'usage_month', 'date']);
+                        const idxPlanId = getIndex(['料金番号', 'customer_id', 'お客さま番号', 'ID', 'Code']);
+                        const idxTariffId = getIndex(['料金表番号', 'tariff_id', 'plan_id']);
+                        const idxUsage = getIndex(['使用量', 'Usage', 'usage', 'Vol', 'usage_amount', 'usage_m3']);
 
-                        if (idxPlanId === -1 || idxBase === -1) {
-                            statusEl.innerText = '必須の列（料金表番号、基本料金など）が見つかりません'; statusEl.className = 'status error'; return;
+                        // もし必須の列が1つも見つからなかったらストップ
+                        if (idxYm === -1 && idxPlanId === -1 && idxUsage === -1) {
+                            log(`❌ エラー: ヘッダー行が認識できませんでした。`);
+                            log(`検出された列名: ${headers.join(', ')}`);
+                            statusEl.innerText = '列名エラー';
+                            statusEl.className = 'status error';
+                            return;
                         }
 
+                        log(`${rawData.length - 1}件のデータを検出。爆速クレンジング開始...`);
+
                         const insertData = [];
+                        let errorCount = 0;
+
+                        // 2行目(インデックス1)からループを回し、特定した列番号から直接データを抜く！
                         for (let i = 1; i < rawData.length; i++) {
                             const row = rawData[i];
-                            if (row.length === 1 && !row[0]) continue;
+                            if (row.length === 1 && !row[0]) continue; // 完全な空行はスキップ
+
+                            const rawYm = idxYm !== -1 ? row[idxYm] : null;
+                            const rawPlanId = idxPlanId !== -1 ? row[idxPlanId] : null;
+                            const rawTariffId = idxTariffId !== -1 ? row[idxTariffId] : null;
+                            const rawUsage = idxUsage !== -1 ? row[idxUsage] : null;
+
+                            if (!rawYm && !rawPlanId && !rawUsage) continue;
+
+                            const ym = standardizeYearMonth(rawYm);
+                            if (!ym) {
+                                errorCount++;
+                                if (errorCount <= 3) log(`⚠️ 行 ${i + 1}: 年月の解釈に失敗 (${rawYm || '空欄'})`);
+                                else if (errorCount === 4) log(`⚠️ ...以降の中間エラーログは省略します`);
+                                continue;
+                            }
 
                             insertData.push({
                                 user_id: currentUser.id,
-                                plan_id: parseInt(cleanNum(row[idxPlanId])),
-                                plan_name: idxPlanName !== -1 ? String(row[idxPlanName] || "") : "未設定プラン",
-                                min_usage: cleanNum(row[idxMin]),
-                                max_usage: cleanNum(row[idxMax]),
-                                base_fee: cleanNum(row[idxBase]),
-                                unit_price: cleanNum(row[idxUnit])
+                                year_month: ym,
+                                plan_id: String(rawPlanId || "").trim(),
+                                tariff_id: String(rawTariffId || "").trim(),
+                                usage_amount: parseFloat(rawUsage) || 0
                             });
                         }
 
-                        const { error } = await client.from('price_masters').upsert(insertData);
+                        log(`クレンジング完了。有効データ: ${insertData.length}件`);
 
-                        if (error) { statusEl.innerText = 'エラー: ' + error.message; statusEl.className = 'status error'; }
-                        else { statusEl.innerText = '✓ アップロード完了'; statusEl.className = 'status success'; updateCounts(); loadEditableMaster(); }
+                        if (insertData.length === 0) {
+                            statusEl.innerText = '有効なデータがありませんでした';
+                            statusEl.className = 'status error';
+                            return;
+                        }
+
+                        let hasError = false;
+                        for (let i = 0; i < insertData.length; i += 1000) {
+                            const chunk = insertData.slice(i, i + 1000);
+                            const { error } = await client.from('gas_data_v3').insert(chunk);
+                            if (error) { hasError = true; log(`❌ エラー: ${error.message}`); break; }
+                            const progress = Math.min(100, Math.round(((i + chunk.length) / insertData.length) * 100));
+                            statusEl.innerText = `送信中... ${progress}%`;
+                            log(`送信進捗: ${progress}% (${(i + chunk.length).toLocaleString()}件)`);
+                        }
+
+                        if (!hasError) {
+                            statusEl.innerText = '✓ 全データインポート完了'; statusEl.className = 'status success';
+                            log('✅ インポートに成功しました。'); updateCounts();
+                        } else {
+                            statusEl.innerText = 'エラーが発生しました。コンソールを確認してください。'; statusEl.className = 'status error';
+                        }
                     }
                 });
             };
