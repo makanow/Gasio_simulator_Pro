@@ -374,19 +374,19 @@
         <div class="guide-content">
             <div
                 style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; color: #065f46; font-size: 0.85rem;">
-                <b>自動補正機能:</b> 文字化け(Shift-JIS)やBOM、数値内のカンマ、全角数字はシステムで自動修正されます。
+                <b>自動補正機能:</b> 数値内のカンマや全角数字等は自動補正されます。
             </div>
-            <h3 style="margin-top:0;">1. 料金表マスター (price_masters)</h3>
+            <h3 style="margin-top:0;">1. 料金表マスター </h3>
             <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">
-                <b>💡 ヒント:</b> 日本語の項目名（列名）で運用可能です。列の順番は自由です。
+                <b>💡 ヒント:</b> 項目名を正しく表記してください。
             </p>
             <table class="guide-table">
                 <tr>
                     <th>料金プランID</th>
                     <th>料金プラン名</th>
                     <th>区画名</th>
-                    <th>下限(m³)</th>
-                    <th>上限(m³)</th>
+                    <th>下限</th>
+                    <th>上限</th>
                     <th>基本料金</th>
                     <th>従量単価</th>
                 </tr>
@@ -402,7 +402,7 @@
             </table>
             <button class="btn-outline" onclick="downloadSample('master')">📥 日本語テンプレートをダウンロード</button>
 
-            <h3 style="margin-top: 2rem;">2. 請求データ (v3版)</h3>
+            <h3 style="margin-top: 2rem;">2. 請求データ </h3>
             <table class="guide-table">
                 <tr>
                     <th>年月</th>
@@ -450,10 +450,10 @@
         </div>
 
         <div class="card">
-            <h2>2. 請求データ (v3一括インポート) <span id="billing_count" style="font-size:0.9rem; color:gray;">データ件数: 取得中...</span>
+            <h2>2. 請求データ  <span id="billing_count" style="font-size:0.9rem; color:gray;">データ件数: 取得中...</span>
             </h2>
             <div class="upload-area">
-                <p>CSV形式: <b>年月, 料金番号, 料金表番号, 使用量</b> (ヘッダー行は自動でスキップされます)</p>
+                <p>CSV形式: <b>年月, 料金番号, 料金表番号, 使用量</b> </p>
                 <label class="upload-label">
                     <input type="file" id="file_billing" accept=".csv">CSVを選択
                 </label>
@@ -584,7 +584,7 @@
         function downloadSample(type) {
             let csvContent = ""; let fileName = "";
             if (type === 'master') {
-                csvContent += "料金プランID,料金プラン名,区画名,下限(m³),上限(m³),基本料金,従量単価\n101,一般料金,A,0,8.0,1171,582.59\n101,一般料金,B,8.1,999999,2300,441.49\n";
+                csvContent += "料金プランID,料金プラン名,区画名,下限,上限,基本料金,従量単価\n101,一般料金,A,0,8.0,1171,582.59\n101,一般料金,B,8.1,999999,2300,441.49\n";
                 fileName = "template_master_JP.csv";
             } else {
                 csvContent += "年月,料金番号,料金表番号,使用量\n202403,10005566,101,15.2\n";
