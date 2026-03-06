@@ -704,8 +704,8 @@
                         const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名']);
                         const idxMin = getIndex(['MIN', 'min_usage', '最小']);
                         const idxMax = getIndex(['MAX', 'max_usage', '最大', '上限']);
-                        const idxBase = getIndex(['基本料金', 'base_fee', '基本']);
-                        const idxUnit = getIndex(['単位料金', 'unit_price', '単価', '従量単価']);
+                        const idxBase = getIndex(['基本料金', '基準料金', 'base_fee', '基本']);
+                        const idxUnit = getIndex(['単位料金', '従量料金', 'unit_price', '単価', '従量単価']);
 
                         if (idxPlanId === -1 || idxBase === -1) {
                             statusEl.innerText = '必須の列（料金表番号、基本料金など）が見つかりません'; statusEl.className = 'status error'; return;
