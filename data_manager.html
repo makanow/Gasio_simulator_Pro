@@ -687,24 +687,22 @@
                             statusEl.innerText = 'データがありません'; statusEl.className = 'status error'; return;
                         }
 
-                        // ヘッダー行のクレンジング（★ .toLowerCase() を追加して強制小文字化）
+                        // ヘッダー行のクレンジング
                         const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '').toLowerCase() : '');
                         const getIndex = (keys) => {
                             for (let k of keys) {
-                                // ★ 探すキーワード側も .toLowerCase() を追加して小文字で照合する
                                 const idx = headers.indexOf(k.toLowerCase());
                                 if (idx !== -1) return idx;
                             }
                             return -1;
                         };
 
-                        // 列名のマッピング（日本語と英語の両対応）
-                        // ★ 辞書側は大文字が混ざったままでOK！（裏で自動的に小文字で照合される）
-                        const idxPlanId = getIndex(['料金表番号', 'plan_id', 'ID', 'プランID']);
-                        const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名']);
-                        const idxMin = getIndex(['MIN', 'min_usage', '最小']);
-                        const idxMax = getIndex(['MAX', 'max_usage', '最大', '上限']);
-                        const idxBase = getIndex(['基本料金', '基準料金', 'base_fee', '基本']);
+                        // ★修正1：辞書を大幅拡張！Python版の言葉（区画名、適用上限など）も全て吸収する
+                        const idxPlanId = getIndex(['料金表番号', 'plan_id', 'ID', 'プランID', 'Code']);
+                        const idxPlanName = getIndex(['料金表名', 'plan_name', 'プラン名', '区画名', 'tier_name', '区画']);
+                        const idxMin = getIndex(['MIN', 'min_usage', '最小', '適用下限']);
+                        const idxMax = getIndex(['MAX', 'max_usage', '最大', '上限', '適用上限']);
+                        const idxBase = getIndex(['基本料金', '基準料金', 'base_fee', '基本', 'Base']);
                         const idxUnit = getIndex(['単位料金', '従量料金', 'unit_price', '単価', '従量単価']);
 
                         if (idxPlanId === -1 || idxBase === -1) {
@@ -714,16 +712,17 @@
                         const insertData = [];
                         for (let i = 1; i < rawData.length; i++) {
                             const row = rawData[i];
-                            if (row.length === 1 && !row[0]) continue;
+                            // ★修正2：カンマだけの空行（ゴミデータ）を完全に弾く強力な防弾シールド
+                            if (!row[idxPlanId] && !row[idxBase]) continue;
 
                             insertData.push({
                                 user_id: currentUser.id,
-                                plan_id: parseInt(cleanNum(row[idxPlanId])),
+                                plan_id: parseInt(cleanNum(idxPlanId !== -1 ? row[idxPlanId] : 0)),
                                 plan_name: idxPlanName !== -1 ? String(row[idxPlanName] || "") : "未設定プラン",
-                                min_usage: cleanNum(row[idxMin]),
-                                max_usage: cleanNum(row[idxMax]),
-                                base_fee: cleanNum(row[idxBase]),
-                                unit_price: cleanNum(row[idxUnit])
+                                min_usage: cleanNum(idxMin !== -1 ? row[idxMin] : 0),
+                                max_usage: cleanNum(idxMax !== -1 ? row[idxMax] : 99999), // MAXが見つからない場合は上限なし扱い
+                                base_fee: cleanNum(idxBase !== -1 ? row[idxBase] : 0),
+                                unit_price: cleanNum(idxUnit !== -1 ? row[idxUnit] : 0)
                             });
                         }
 
