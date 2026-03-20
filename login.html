@@ -15,7 +15,9 @@
         button { width: 100%; padding: 1rem; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 1rem; margin-top: 1rem; }
         .btn-primary { background: var(--accent); color: white; }
         .btn-outline { background: white; color: var(--accent); border: 1px solid var(--accent); }
-        #msg { margin-top: 1rem; font-size: 0.85rem; color: #e74c3c; }
+        /* 追加：パスワード再設定リンクのスタイル */
+        .forgot-link { display: block; margin-top: 1.5rem; font-size: 0.85rem; color: var(--accent); text-decoration: underline; cursor: pointer; background: none; border: none; width: 100%; }
+        #msg { margin-top: 1rem; font-size: 0.85rem; color: #e74c3c; min-height: 1.2rem; }
     </style>
 </head>
 <body>
@@ -25,19 +27,47 @@
     <div class="input-group"><label>パスワード</label><input type="password" id="password"></div>
     <div id="msg"></div>
     <button class="btn-primary" onclick="logIn()">ログイン</button>
+    <button class="forgot-link" onclick="resetPassword()">パスワードを忘れた方はこちら</button>
     <button class="btn-outline" onclick="signUp()">新規アカウント登録</button>
 </div>
 <script>
     const client = supabase.createClient("https://etbsbcbzzxkbkasixmdb.supabase.co", "sb_publishable_nXYCdtEvi2W0mc0Euj3itQ_P41HWKhI");
+    
     async function logIn() {
         const { error } = await client.auth.signInWithPassword({ email: email.value, password: password.value });
         if (error) msg.innerText = error.message;
         else window.location.href = './index.html';
     }
+
     async function signUp() {
         const { error } = await client.auth.signUp({ email: email.value, password: password.value });
         if (error) msg.innerText = error.message;
-        else msg.innerText = "確認メールを送信しました。";
+        else {
+            msg.style.color = "#2ecc71";
+            msg.innerText = "確認メールを送信しました。";
+        }
+    }
+
+    // 追加：パスワード再設定の処理
+    async function resetPassword() {
+        const emailValue = document.getElementById('email').value;
+        if (!emailValue) {
+            msg.innerText = "先にメールアドレスを入力してください。";
+            return;
+        }
+        
+        const { error } = await client.auth.resetPasswordForEmail(emailValue, {
+            // パスワード変更後のリダイレクト先（必要に応じて書き換えてくれ）
+            redirectTo: window.location.origin + '/index.html',
+        });
+
+        if (error) {
+            msg.style.color = "#e74c3c";
+            msg.innerText = error.message;
+        } else {
+            msg.style.color = "#2ecc71";
+            msg.innerText = "再設定メールを送信しました。";
+        }
     }
 </script>
 </body>
