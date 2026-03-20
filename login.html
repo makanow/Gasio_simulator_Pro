@@ -58,7 +58,7 @@
         
         const { error } = await client.auth.resetPasswordForEmail(emailValue, {
             // パスワード変更後のリダイレクト先（必要に応じて書き換えてくれ）
-            redirectTo: window.location.origin + '/index.html',
+            redirectTo: window.location.origin + '/update-password.html',
         });
 
         if (error) {
