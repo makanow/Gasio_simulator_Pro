@@ -1320,20 +1320,33 @@
             }
 
             // --- ② UIからの値取得 ---
-            const nBase = parseFloat(document.getElementById('n_base').value);
-            const limits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value));
-            const prices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value));
+            // --- 複数二部料金用マトリックスの自動生成 ---
+            const firstBase = parseFloat(document.getElementById('n_base').value) || 0;
+            const inputLimits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value) || 0);
+            const inputPrices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value) || 0);
+
+            const tiers = [];
+            let cumulativeBase = firstBase;
+            for (let i = 0; i < inputPrices.length; i++) {
+                if (i > 0) {
+                    // 境界点で料金が跳ねないよう基本料金をスライドさせる論理計算
+                    cumulativeBase += inputLimits[i - 1] * (inputPrices[i - 1] - inputPrices[i]);
+                }
+                tiers.push({
+                    base: cumulativeBase,
+                    limit: (i < inputLimits.length) ? inputLimits[i] : Infinity,
+                    price: inputPrices[i]
+                });
+            }
 
             btn.innerText = "計算中...";
             status.innerText = "Processing...";
 
-            // --- ③ 計算実行 ---
             setTimeout(() => {
                 let curTotal = 0, newTotal = 0;
                 let cTierMap = {}; let cTierSort = {}; let planTotalDist = {}; let nTierMap = {};
                 let cTierUsageMap = {}; let planTotalUsage = {}; let cTierImpactMap = {};
 
-                // キャッシュから抽出したデータをループ
                 billingData.forEach(row => {
                     let usage = parseFloat(row.usage_amount) || 0;
                     let tId = String(row.tariff_id);
@@ -1360,22 +1373,23 @@
                         }
                     }
 
-                    // 新料金計算
-                    let newBill = nBase;
+                    // --- 新料金計算（内部生成したtiers配列を使用） ---
+                    let newBill = tiers[0].base;
                     let nTierName = "区画A";
                     let nSortKey = 1;
                     if (usage === 0) {
-                        newBill = nBase;
+                        newBill = tiers[0].base;
                     } else {
-                        for (let i = 0; i < prices.length; i++) {
-                            let maxU = i < limits.length ? limits[i] : Infinity;
-                            let minU = i === 0 ? 0 : limits[i - 1];
-                            if (usage > minU && usage <= maxU) {
-                                newBill = nBase + (usage * prices[i]);
+                        let prevLimit = -0.001;
+                        for (let i = 0; i < tiers.length; i++) {
+                            let t = tiers[i];
+                            if (usage > prevLimit && usage <= t.limit + 0.001) {
+                                newBill = t.base + (usage * t.price);
                                 nTierName = `区画${String.fromCharCode(65 + i)}`;
                                 nSortKey = i + 1;
                                 break;
                             }
+                            prevLimit = t.limit;
                         }
                     }
 
