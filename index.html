@@ -1400,8 +1400,8 @@
                     planTotalUsage[tId] += usage;
 
                     const impact = newBill - curBill;
-                    if (nTierImpactMap[nTierName].impact === undefined) nTierImpactMap[nTierName].impact = 0;
-                    nTierImpactMap[nTierName].impact += impact;
+                    if (nTierMap[nTierName].impact === undefined) nTierMap[nTierName].impact = 0;
+                    nTierMap[nTierName].impact += impact;
                 });
 
                 // UI反映
@@ -1576,12 +1576,13 @@
                 // グラフ描画4: 収益インパクト
                 const ctxImpact = document.getElementById('impactChart').getContext('2d');
                 if (impactChartObj) impactChartObj.destroy();
+                // 計算結果が入っている nTierMap からデータを取り出す
                 const impactData = sortedNTiers.map(t => nTierMap[t].impact || 0);
 
                 impactChartObj = new Chart(ctxImpact, {
                     type: 'bar',
                     data: {
-                        labels: sortedCTiers,
+                        labels: sortedNTiers, // ← ここを新料金の区画名（A, B, C...）に統一
                         datasets: [{
                             label: '増収・減収額 (円)',
                             data: impactData,
