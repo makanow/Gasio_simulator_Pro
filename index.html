@@ -1338,6 +1338,8 @@
                     price: inputPrices[i]
                 });
             }
+            // ★ この1行を追加して内部データを覗き見る
+            console.table(tiers);
 
             btn.innerText = "計算中...";
             status.innerText = "Processing...";
