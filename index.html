@@ -1400,6 +1400,7 @@
                     planTotalUsage[tId] += usage;
 
                     const impact = newBill - curBill;
+                    // すでに定義されている「nTierMap」の中に、インパクトの結果を相乗りさせる
                     if (nTierMap[nTierName].impact === undefined) nTierMap[nTierName].impact = 0;
                     nTierMap[nTierName].impact += impact;
                 });
