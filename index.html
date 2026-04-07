@@ -1400,8 +1400,8 @@
                     planTotalUsage[tId] += usage;
 
                     const impact = newBill - curBill;
-                    if (cTierImpactMap[cTierName] === undefined) cTierImpactMap[cTierName] = 0;
-                    cTierImpactMap[cTierName] += impact;
+                    if (nTierImpactMap[nTierName].impact === undefined) nTierImpactMap[nTierName].impact = 0;
+                    nTierImpactMap[nTierName].impact += impact;
                 });
 
                 // UI反映
@@ -1576,8 +1576,7 @@
                 // グラフ描画4: 収益インパクト
                 const ctxImpact = document.getElementById('impactChart').getContext('2d');
                 if (impactChartObj) impactChartObj.destroy();
-
-                const impactData = sortedCTiers.map(t => cTierImpactMap[t]);
+                const impactData = sortedNTiers.map(t => nTierMap[t].impact || 0);
 
                 impactChartObj = new Chart(ctxImpact, {
                     type: 'bar',
