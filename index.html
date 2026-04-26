@@ -823,7 +823,7 @@
 
         async function loadMasterData() {
             const checkboxes = document.querySelectorAll('.plan-check:checked');
-            const selectedIds = Array.from(checkboxes).map(cb => String(cb.value));
+            const selectedIds = Array.from(checkboxes).map(cb => Number(cb.value));
             const container = document.getElementById('master_table_container');
 
             if (selectedIds.length === 0) {
@@ -1312,7 +1312,7 @@
             }
 
             // メモリ上で選択されたプランだけを抽出
-            const billingData = window.cachedRawData.filter(item => selectedIds.includes(String(item.tariff_id)));
+            const billingData = window.cachedRawData.filter(item => selectedIds.includes(Number(item.tariff_id)));
 
             if (billingData.length === 0) {
                 alert("該当するデータがありません。");
@@ -1351,7 +1351,7 @@
 
                 billingData.forEach(row => {
                     let usage = parseFloat(row.usage_amount) || 0;
-                    let tId = String(row.tariff_id);
+                    let tId = Number(row.tariff_id);
 
                     // 現行計算
                     let curBill = 0;
