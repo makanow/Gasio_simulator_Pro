@@ -376,12 +376,10 @@
             color: var(--red);
         }
 
-        /* 修正後 */
         .charts-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1.5rem;
-            /* height: 350px; は削除 */
         }
 
         .chart-box {
@@ -393,7 +391,6 @@
             flex-direction: column;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             min-height: 350px;
-            /* 各箱に最低限の高さを保証させる */
         }
 
         .trend-grid {
@@ -402,16 +399,6 @@
             gap: 1.5rem;
             height: 350px;
             margin-top: 1.5rem;
-        }
-
-        .chart-box {
-            background: #fff;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
         .chart-header {
@@ -723,15 +710,14 @@
         let distChartObj = null, usageDistChartObj = null, revChartObj = null, trendChartObj = null, impactChartObj = null;
         let currentUser = null;
 
-        // 計算とCSV出力用のグローバル変数群
-        window.trendChartData = null; // トレンドグラフ用
-        window.rawBillingData = []; // DBから取得した生データ（またはデモデータ）
-        window.cachedRawData = null; // ★ここを追加：初回全データ保持用の金庫
-        window.currentMasterRules = {}; // 選択中のプランルール
-        window.currentAnomalies = []; // アラート対象顧客
-        window.currentAllImpacts = []; // 全顧客のシミュレーション明細
-        window.currentTrendRaw = {}; // 月別トレンドの生データ保持用
-        window.isDemoMode = false; // デモモードフラグ
+        window.trendChartData = null; 
+        window.rawBillingData = []; 
+        window.cachedRawData = null; 
+        window.currentMasterRules = {}; 
+        window.currentAnomalies = []; 
+        window.currentAllImpacts = []; 
+        window.currentTrendRaw = {}; 
+        window.isDemoMode = false; 
 
         const PALETTE = ['#88a0b9', '#82e0aa', '#f5b7b1', '#f9e79f', '#d7bde2', '#aab7b8', '#5D6D7E', '#48C9B0', '#F1948A', '#F7DC6F'];
 
@@ -772,13 +758,37 @@
             updateTierLabels();
         }
 
-        // 🌟 起動時のデータチェック（DBが空ならデモモード発動）
         async function init() {
-            const { data, error } = await client.from('price_masters').select('plan_id, plan_name');
             const container = document.getElementById('plan_checkboxes');
             container.innerHTML = '';
 
-            // DBにデータがない場合はデモモードを起動
+            // 全件取得ループに変更
+            let allData = [];
+            let step = 1000;
+            let start = 0;
+            let fetchMore = true;
+            let initError = null;
+
+            while (fetchMore) {
+                const { data: chunk, error: err } = await client.from('price_masters')
+                    .select('plan_id, plan_name')
+                    .range(start, start + step - 1);
+                
+                if (err) { initError = err; break; }
+                
+                if (chunk && chunk.length > 0) {
+                    allData = allData.concat(chunk);
+                    start += chunk.length;
+                }
+                
+                if (!chunk || chunk.length < step) {
+                    fetchMore = false;
+                }
+            }
+
+            const data = allData;
+            const error = initError;
+
             if (error || !data || data.length === 0) {
                 enableDemoMode();
                 return;
@@ -800,7 +810,6 @@
             loadTrendData();
         }
 
-        // 🌟 デモモード（テストデータ生成）
         function enableDemoMode() {
             window.isDemoMode = true;
             document.getElementById('status').innerHTML = '<span style="color:var(--demo); font-weight:bold;">✨ テストデータで動作中 (デモモード)</span>';
@@ -841,7 +850,31 @@
                 };
                 selectedIds.forEach(id => { if (demoRules[id]) planGroups[id] = demoRules[id]; });
             } else {
-                const { data } = await client.from('price_masters').select('*').in('plan_id', selectedIds).order('plan_id').order('min_usage');
+                // 全件取得ループに変更
+                let allData = [];
+                let step = 1000;
+                let start = 0;
+                let fetchMore = true;
+
+                while (fetchMore) {
+                    const { data: chunk } = await client.from('price_masters')
+                        .select('*')
+                        .in('plan_id', selectedIds)
+                        .order('plan_id')
+                        .order('min_usage')
+                        .range(start, start + step - 1);
+                    
+                    if (chunk && chunk.length > 0) {
+                        allData = allData.concat(chunk);
+                        start += chunk.length;
+                    }
+                    
+                    if (!chunk || chunk.length < step) {
+                        fetchMore = false;
+                    }
+                }
+                const data = allData;
+
                 if (data) {
                     data.forEach(row => {
                         let pid = String(row.plan_id);
@@ -893,7 +926,6 @@
                 statusEl.innerText = `デモデータを生成中...`;
                 const months = ['202304', '202305', '202306', '202307', '202308', '202309', '202310', '202311', '202312', '202401', '202402', '202403'];
 
-                // プラン1: 100顧客分の1年データ (冬場に増える)
                 if (selectedIds.includes('1')) {
                     for (let i = 1; i <= 100; i++) {
                         let mId = `1000${i.toString().padStart(4, '0')}`;
@@ -905,7 +937,6 @@
                         });
                     }
                 }
-                // プラン2: 50顧客分の1年データ (特定の顧客にアラートを出させる仕掛け)
                 if (selectedIds.includes('2')) {
                     for (let i = 1; i <= 50; i++) {
                         let mId = `2000${i.toString().padStart(4, '0')}`;
@@ -913,18 +944,15 @@
                         months.forEach((ym, idx) => {
                             let s = (idx >= 7 && idx <= 10) ? 1.3 : 1.0;
                             let usage = baseU * s + (Math.random() * 5);
-                            if (i === 5) usage *= 3.0; // 5人目だけ極端に使用量が多い設定（値上げアラートに引っかかりやすい）
+                            if (i === 5) usage *= 3.0; 
                             allData.push({ year_month: ym, plan_id: mId, tariff_id: '2', usage_amount: usage });
                         });
                     }
                 }
             } else {
-                // --- ここが爆速化の要（初回のみDB通信） ---
                 if (!window.cachedRawData) {
-                    // 1. グラフのタイトルは固定
                     statusEl.innerText = "過去1年間の使用量推移 (料金表別)";
 
-                    // 2. サイドバーの表示場所を取得
                     const sidebarStatus = document.getElementById('sidebar_status');
                     if (sidebarStatus) {
                         sidebarStatus.style.color = "#3498db";
@@ -941,7 +969,7 @@
                             .select('year_month, tariff_id, plan_id, usage_amount')
                             .eq('user_id', currentUser.id)
                             .order('year_month', { ascending: true })
-                            .order('plan_id', { ascending: true }) // ★これを追加！これで順序が絶対固定される！
+                            .order('plan_id', { ascending: true }) 
                             .range(start, start + step - 1);
 
                         if (error) {
@@ -953,7 +981,6 @@
                         if (data && data.length > 0) {
                             fetchAllData = fetchAllData.concat(data);
                             start += data.length;
-                            // 3. サイドバーの数字をカウントアップ
                             if (sidebarStatus) sidebarStatus.innerText = `データ読込中... (${fetchAllData.length.toLocaleString()}件)`;
                         }
 
@@ -963,7 +990,6 @@
                     }
                     window.cachedRawData = fetchAllData;
 
-                    // 4. 完了演出：緑にして2秒後に消す
                     if (sidebarStatus) {
                         sidebarStatus.style.color = "#2ecc71";
                         sidebarStatus.innerText = `✓ ${window.cachedRawData.length.toLocaleString()}件 読込完了`;
@@ -971,7 +997,6 @@
                     }
                 }
 
-                // 金庫（キャッシュ）から抽出
                 allData = window.cachedRawData.filter(row => selectedIds.includes(String(row.tariff_id)));
             }
             window.rawBillingData = allData;
@@ -1059,9 +1084,8 @@
             if (window.trendChartData) renderTrendChart();
         }
 
-        // --- CSVダウンロードの共通処理 ---
         function triggerDownload(csvContent, fileName) {
-            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excelで文字化けしないためのBOM
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); 
             const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
@@ -1069,7 +1093,6 @@
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
-        // ① アラート対象の料金番号のみ出力
         function exportAnomalyCSV() {
             if (!window.currentAnomalies || window.currentAnomalies.length === 0) {
                 alert("出力するアラートデータがありません。");
@@ -1084,7 +1107,6 @@
             triggerDownload(csvContent, "anomaly_alert_data.csv");
         }
 
-        // ② 全ての料金番号を出力（左ペインに移動）
         function exportAllCSV() {
             if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
                 alert("出力するデータがありません。シミュレーションを実行してください。");
@@ -1099,7 +1121,6 @@
             triggerDownload(csvContent, "all_meters_simulation_data.csv");
         }
 
-        // ③ 画面の情報を網羅した「総合レポート」のCSV出力（左ペイン用）
         function exportComprehensiveCSV() {
             if (!window.currentAllImpacts || window.currentAllImpacts.length === 0) {
                 alert("シミュレーションを実行してから出力してください。");
@@ -1111,7 +1132,6 @@
 
             let csv = `■ Gasio シミュレーション総合結果レポート,作成日時：${dateStr}\n\n`;
 
-            // 1. 前提条件（選択プランと新料金設定）
             csv += "【シミュレーション前提条件】\n";
             const checkboxes = document.querySelectorAll('.plan-check:checked');
             const planNames = Array.from(checkboxes).map(cb => `${cb.value}:${cb.getAttribute('data-name')}`).join(" / ");
@@ -1130,14 +1150,12 @@
             }
             csv += "\n";
 
-            // 2. 全体サマリー
             csv += "【全体サマリー（年間推定）】\n";
             csv += `現行総収益,${document.getElementById('v_cur').innerText.replace(/¥|,/g, '')} 円\n`;
             csv += `新料金総収益,${document.getElementById('v_new').innerText.replace(/¥|,/g, '')} 円\n`;
             csv += `収益インパクト額,${document.getElementById('v_diff').innerText.replace(/¥|,|\+|/g, '')} 円\n`;
             csv += `収益インパクト率,${document.getElementById('v_delta').innerText.replace(/▲|▼| /g, '')}\n\n`;
 
-            // 3. 月別・プラン別 使用量トレンド
             csv += "【月別・プラン別 使用量トレンド(m3)】\n";
             if (window.currentTrendRaw && window.currentTrendRaw.labels) {
                 let tLabels = window.currentTrendRaw.labels;
@@ -1160,7 +1178,6 @@
             triggerDownload(csv, "gasio_comprehensive_report.csv");
         }
 
-        // --- 値上げ影響度計算・アラート判定 ---
         function detectAnomalies() {
             const container = document.getElementById('anomaly_container');
             const listEl = document.getElementById('anomaly_list');
@@ -1203,7 +1220,6 @@
                 return 0;
             }
 
-            // メーターごとの年間使用量と料金を集計
             let meterImpacts = {};
             window.rawBillingData.forEach(row => {
                 let meterId = row.plan_id;
@@ -1236,11 +1252,9 @@
                 }
             }
 
-            // 全顧客の結果を保存
             allImpacts.sort((a, b) => b.rate - a.rate);
             window.currentAllImpacts = allImpacts;
 
-            // 閾値を超えるアラート対象を抽出
             let anomalies = allImpacts.filter(a => a.rate >= threshold);
             window.currentAnomalies = anomalies;
 
@@ -1271,7 +1285,6 @@
             }
         }
 
-        // 🌟 完全フロントエンド移行版のシミュレーション実行ロジック
         async function runSim() {
             const btn = document.getElementById('run_btn');
             const status = document.getElementById('status');
@@ -1283,7 +1296,6 @@
             btn.innerText = "データ準備中...";
             btn.disabled = true;
 
-            // --- ① キャッシュを使った爆速データ準備 ---
             if (!window.cachedRawData) {
                 const sidebarStatus = document.getElementById('sidebar_status');
                 if (sidebarStatus) {
@@ -1302,7 +1314,7 @@
                     return;
                 }
 
-                window.cachedRawData = data; // 金庫に格納
+                window.cachedRawData = data;
 
                 if (sidebarStatus) {
                     sidebarStatus.style.color = "#2ecc71";
@@ -1311,7 +1323,6 @@
                 }
             }
 
-            // メモリ上で選択されたプランだけを抽出
             const billingData = window.cachedRawData.filter(item => selectedIds.includes(String(item.tariff_id)));
 
             if (billingData.length === 0) {
@@ -1319,8 +1330,6 @@
                 btn.innerText = "シミュレーション実行"; btn.disabled = false; return;
             }
 
-            // --- ② UIからの値取得 ---
-            // --- 複数二部料金用マトリックスの自動生成 ---
             const firstBase = parseFloat(document.getElementById('n_base').value) || 0;
             const inputLimits = Array.from(document.querySelectorAll('.input-limit')).map(inp => parseFloat(inp.value) || 0);
             const inputPrices = Array.from(document.querySelectorAll('.input-price')).map(inp => parseFloat(inp.value) || 0);
@@ -1329,7 +1338,6 @@
             let cumulativeBase = firstBase;
             for (let i = 0; i < inputPrices.length; i++) {
                 if (i > 0) {
-                    // 境界点で料金が跳ねないよう基本料金をスライドさせる論理計算
                     cumulativeBase += inputLimits[i - 1] * (inputPrices[i - 1] - inputPrices[i]);
                 }
                 tiers.push({
@@ -1338,7 +1346,6 @@
                     price: inputPrices[i]
                 });
             }
-            // ★ この1行を追加して内部データを覗き見る
             console.table(tiers);
 
             btn.innerText = "計算中...";
@@ -1353,7 +1360,6 @@
                     let usage = parseFloat(row.usage_amount) || 0;
                     let tId = String(row.tariff_id);
 
-                    // 現行計算
                     let curBill = 0;
                     let cTierName = "区画A";
                     let cSortKey = 1;
@@ -1375,7 +1381,6 @@
                         }
                     }
 
-                    // --- 新料金計算（内部生成したtiers配列を使用） ---
                     let newBill = tiers[0].base;
                     let nTierName = "区画A";
                     let nSortKey = 1;
@@ -1408,7 +1413,6 @@
                     nTierMap[nTierName].cur += curBill;
                     nTierMap[nTierName].new += newBill;
 
-                    // ▼ 使用量とインパクトの集計
                     if (cTierUsageMap[cTierName] === undefined) cTierUsageMap[cTierName] = 0;
                     cTierUsageMap[cTierName] += usage;
 
@@ -1416,12 +1420,10 @@
                     planTotalUsage[tId] += usage;
 
                     const impact = newBill - curBill;
-                    // すでに定義されている「nTierMap」の中に、インパクトの結果を相乗りさせる
                     if (nTierMap[nTierName].impact === undefined) nTierMap[nTierName].impact = 0;
                     nTierMap[nTierName].impact += impact;
                 });
 
-                // UI反映
                 const diff = newTotal - curTotal;
                 const delta = curTotal > 0 ? (diff / curTotal) * 100 : 0;
 
@@ -1434,7 +1436,6 @@
                 deltaEl.className = "delta " + (delta >= 0 ? "plus" : "minus");
                 document.getElementById('card_diff').style.borderLeftColor = delta >= 0 ? 'var(--green)' : 'var(--red)';
 
-                // グラフ描画1: 調定数
                 const ctx1 = document.getElementById('distChart').getContext('2d');
                 if (distChartObj) distChartObj.destroy();
 
@@ -1481,7 +1482,6 @@
                     });
                 }
 
-                // グラフ描画2: 使用量
                 const ctxUsage = document.getElementById('usageDistChart').getContext('2d');
                 if (usageDistChartObj) usageDistChartObj.destroy();
 
@@ -1490,7 +1490,7 @@
                 if (selectedIds.length === 1) {
                     document.getElementById('usage_dist_title').innerText = "現行区画別 使用量比率";
                     usageDistChartObj = new Chart(ctxUsage, {
-                        type: 'doughnut', // 1に合わせてdoughnutに固定
+                        type: 'doughnut', 
                         data: {
                             labels: sortedCTiers,
                             datasets: [{
@@ -1503,7 +1503,7 @@
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            cutout: '65%', // 1と同じドーナツの太さに設定
+                            cutout: '65%', 
                             plugins: {
                                 legend: { position: 'right' },
                                 datalabels: {
@@ -1518,7 +1518,6 @@
                                     borderRadius: 4,
                                     padding: 4
                                 },
-                                // 使用量なので単位 (m³) を追加
                                 tooltip: {
                                     callbacks: {
                                         label: function (c) {
@@ -1534,13 +1533,13 @@
                     const pUsageLabels = Object.keys(planTotalUsage).map(p => `Plan ${p}`);
                     const usageDataTotal = Object.values(planTotalUsage);
                     usageDistChartObj = new Chart(ctxUsage, {
-                        type: 'bar', // 1に合わせた棒グラフ
+                        type: 'bar', 
                         data: {
                             labels: pUsageLabels,
                             datasets: [{
                                 label: '総使用量(m³)',
                                 data: usageDataTotal,
-                                backgroundColor: '#2ecc71', // 使用量は緑を維持
+                                backgroundColor: '#2ecc71', 
                                 borderRadius: 4
                             }]
                         },
@@ -1563,7 +1562,6 @@
                     });
                 }
 
-                // グラフ描画3: 収益比較
                 const ctx2 = document.getElementById('revChart').getContext('2d');
                 if (revChartObj) revChartObj.destroy();
 
@@ -1590,16 +1588,14 @@
                     }
                 });
 
-                // グラフ描画4: 収益インパクト
                 const ctxImpact = document.getElementById('impactChart').getContext('2d');
                 if (impactChartObj) impactChartObj.destroy();
-                // 計算結果が入っている nTierMap からデータを取り出す
                 const impactData = sortedNTiers.map(t => nTierMap[t].impact || 0);
 
                 impactChartObj = new Chart(ctxImpact, {
                     type: 'bar',
                     data: {
-                        labels: sortedNTiers, // ← ここを新料金の区画名（A, B, C...）に統一
+                        labels: sortedNTiers, 
                         datasets: [{
                             label: '増収・減収額 (円)',
                             data: impactData,
@@ -1611,13 +1607,10 @@
                         responsive: true, maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            // ▼ 修正：グラフ上の数字（データラベル）の小数点を消す
                             datalabels: {
                                 formatter: (value) => Math.round(value).toLocaleString(),
                                 font: { size: 11 }
-                                // もしグラフ上の数字自体が邪魔で消したい場合は display: false にしてくれ
                             },
-                            // ▼ 修正：ホバー時の吹き出しも丸める
                             tooltip: { callbacks: { label: (c) => `インパクト: ${Math.round(c.parsed.y).toLocaleString()} 円` } }
                         },
                         scales: {
@@ -1625,7 +1618,6 @@
                                 beginAtZero: true,
                                 grid: { color: '#f1f5f9' },
                                 title: { display: true, text: '増減合計 (円)', font: { size: 11 } },
-                                // ▼ 修正：Y軸の目盛りも小数点を消す
                                 ticks: { callback: (value) => Math.round(value).toLocaleString() }
                             },
                             x: { grid: { display: false } }
@@ -1641,7 +1633,7 @@
                     ? "<span style='color:var(--demo); font-weight:bold;'>✨ デモデータでシミュレーション完了</span>"
                     : "✓ 完了";
 
-            }, 50); // UIの描画が固まらないように50ms遅延
+            }, 50); 
         }
 
         document.getElementById('run_btn').addEventListener('click', runSim);

@@ -507,10 +507,37 @@
         // --- 料金表マスター ---
         async function loadEditableMaster() {
             const container = document.getElementById('editable_master_container');
-            const { data, error } = await client.from('price_masters')
-                .select('*').eq('user_id', currentUser.id).order('plan_id').order('min_usage');
+            
+            // 全件取得ループに変更
+            let allData = [];
+            let step = 1000;
+            let start = 0;
+            let fetchMore = true;
+            let lastError = null;
 
-            if (error) { container.innerHTML = `<p style="color:red;">エラー: ${error.message}</p>`; return; }
+            while (fetchMore) {
+                const { data: chunk, error } = await client.from('price_masters')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('plan_id')
+                    .order('min_usage')
+                    .range(start, start + step - 1);
+
+                if (error) { lastError = error; break; }
+                
+                if (chunk && chunk.length > 0) {
+                    allData = allData.concat(chunk);
+                    start += chunk.length;
+                }
+                
+                if (!chunk || chunk.length < step) {
+                    fetchMore = false;
+                }
+            }
+
+            if (lastError) { container.innerHTML = `<p style="color:red;">エラー: ${lastError.message}</p>`; return; }
+            const data = allData;
+
             if (!data || data.length === 0) { container.innerHTML = `<p style="color:gray; font-size:0.9rem;">現在登録されている料金表はありません。</p>`; return; }
 
             const planGroups = {};
@@ -601,8 +628,33 @@
         }
 
         async function downloadMaster() {
-            const { data } = await client.from('price_masters').select('plan_id, plan_name, min_usage, max_usage, base_fee, unit_price').eq('user_id', currentUser.id).order('plan_id').order('min_usage');
-            if (data && data.length > 0) triggerDownload(Papa.unparse(data), "gasio_price_masters.csv");
+            // 全件取得ループに変更
+            let allData = [];
+            let step = 1000;
+            let start = 0;
+            let fetchMore = true;
+
+            while (fetchMore) {
+                const { data: chunk, error } = await client.from('price_masters')
+                    .select('plan_id, plan_name, min_usage, max_usage, base_fee, unit_price')
+                    .eq('user_id', currentUser.id)
+                    .order('plan_id')
+                    .order('min_usage')
+                    .range(start, start + step - 1);
+
+                if (error) { alert("データ取得エラー"); return; }
+                
+                if (chunk && chunk.length > 0) {
+                    allData = allData.concat(chunk);
+                    start += chunk.length;
+                }
+                
+                if (!chunk || chunk.length < step) {
+                    fetchMore = false;
+                }
+            }
+
+            if (allData && allData.length > 0) triggerDownload(Papa.unparse(allData), "gasio_price_masters.csv");
             else alert("データがありません");
         }
 
@@ -722,9 +774,6 @@
                 const encoding = Encoding.detect(codes);
                 const unicodeString = Encoding.convert(codes, { to: 'UNICODE', from: encoding, type: 'string' });
 
-                // PapaParseの実行部分をまるごと以下に差し替え
-                // PapaParseの実行部分をまるごと以下に差し替え
-                // PapaParseの実行部分をまるごと以下に差し替え
                 Papa.parse(unicodeString, {
                     header: false, // ★元の「爆速配列モード」に戻す！
                     skipEmptyLines: true,
@@ -737,7 +786,6 @@
                         }
 
                         // ★1行目からヘッダー（列名）の場所を特定するスマート処理
-                        // BOM（見えない文字）や引用符を自動除去してクリーンにする
                         const headers = rawData[0].map(h => typeof h === 'string' ? h.trim().replace(/^\uFEFF/, '').replace(/^["']|["']$/g, '') : '');
 
                         const getIndex = (keys) => {
@@ -748,13 +796,11 @@
                             return -1;
                         };
 
-                        // 列の「名前」をもとに、何番目の列にデータがあるかを探し出す（ネーミングの衝突も完全解決済）
                         const idxYm = getIndex(['年月', 'year_month', 'usage_month', 'date']);
                         const idxPlanId = getIndex(['料金番号', 'customer_id', 'お客さま番号', 'ID', 'Code']);
                         const idxTariffId = getIndex(['料金表番号', 'tariff_id', 'plan_id']);
                         const idxUsage = getIndex(['使用量', 'Usage', 'usage', 'Vol', 'usage_amount', 'usage_m3']);
 
-                        // もし必須の列が1つも見つからなかったらストップ
                         if (idxYm === -1 && idxPlanId === -1 && idxUsage === -1) {
                             log(`❌ エラー: ヘッダー行が認識できませんでした。`);
                             log(`検出された列名: ${headers.join(', ')}`);
@@ -768,10 +814,9 @@
                         const insertData = [];
                         let errorCount = 0;
 
-                        // 2行目(インデックス1)からループを回し、特定した列番号から直接データを抜く！
                         for (let i = 1; i < rawData.length; i++) {
                             const row = rawData[i];
-                            if (row.length === 1 && !row[0]) continue; // 完全な空行はスキップ
+                            if (row.length === 1 && !row[0]) continue;
 
                             const rawYm = idxYm !== -1 ? row[idxYm] : null;
                             const rawPlanId = idxPlanId !== -1 ? row[idxPlanId] : null;
